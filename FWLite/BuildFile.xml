@@ -1,0 +1,12 @@
+<!--use   name="root"/-->
+<!--use   name="rootcore"/-->
+<!--use   name="rootmath"/-->
+<!--use   name="boost"/-->
+<!--use   name="DataFormats/Common"/-->
+<!--use   name="DataFormats/Candidate"/-->
+<!--use   name="DataFormats/PatCandidates"/-->
+<use   name="DataFormats/FWLite"/>
+<!--flags   CXXFLAGS="-O2 -g -DDEBUG"/-->
+<export>
+  <lib   name="1"/>
+</export>

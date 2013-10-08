@@ -1,0 +1,7 @@
+<export>
+</export>
+<library   name="ParticleTools_plugins" file="*.cc">
+  <use   name="DataFormats/ParticleFlowCandidate"/>
+  <use   name="FWCore/Framework"/>
+  <!--use   name="JetMETTriggerAnalysis/Utilities"/-->
+</library>

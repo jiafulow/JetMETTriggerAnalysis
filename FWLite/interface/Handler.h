@@ -1,0 +1,176 @@
+#ifndef HANDLER_H
+#define HANDLER_H
+
+#include "DataFormats/FWLite/interface/Handle.h"
+#include "DataFormats/FWLite/interface/Event.h"
+// L1
+//#include "DataFormats/L1Trigger/interface/L1EmParticle.h"
+#include "DataFormats/L1Trigger/interface/L1EtMissParticle.h"
+#include "DataFormats/L1Trigger/interface/L1JetParticle.h"
+//#include "DataFormats/L1Trigger/interface/L1MuonParticle.h"
+// HLT+RECO
+//#include "DataFormats/RecoCandidate/interface/RecoEcalCandidate.h"
+//#include "DataFormats/RecoCandidate/interface/RecoEcalCandidateFwd.h"
+//#include "DataFormats/EgammaCandidates/interface/Electron.h"
+//#include "DataFormats/EgammaCandidates/interface/ElectronFwd.h"
+//#include "DataFormats/RecoCandidate/interface/RecoChargedCandidate.h"
+//#include "DataFormats/RecoCandidate/interface/RecoChargedCandidateFwd.h"
+#include "DataFormats/JetReco/interface/CaloJet.h"
+#include "DataFormats/JetReco/interface/CaloJetCollection.h"
+//#include "DataFormats/Candidate/interface/CompositeCandidate.h"
+//#include "DataFormats/Candidate/interface/CompositeCandidateFwd.h"
+#include "DataFormats/METReco/interface/CaloMET.h"
+#include "DataFormats/METReco/interface/CaloMETFwd.h"
+#include "DataFormats/METReco/interface/MET.h"
+#include "DataFormats/METReco/interface/METFwd.h"
+//#include "DataFormats/TauReco/interface/CaloTau.h"
+//#include "DataFormats/TauReco/interface/CaloTauFwd.h"
+//#include "DataFormats/TauReco/interface/HLTTau.h"
+//#include "DataFormats/TauReco/interface/HLTTauFwd.h"
+//#include "DataFormats/TauReco/interface/PFTau.h"
+//#include "DataFormats/TauReco/interface/PFTauFwd.h"
+//#include "DataFormats/JetReco/interface/PFJet.h"
+//#include "DataFormats/JetReco/interface/PFJetCollection.h"
+// PAT
+#include "DataFormats/ParticleFlowReco/interface/PFRecTrack.h"
+#include "DataFormats/PatCandidates/interface/Electron.h"
+#include "DataFormats/PatCandidates/interface/Jet.h"
+#include "DataFormats/PatCandidates/interface/MET.h"
+#include "DataFormats/PatCandidates/interface/Muon.h"
+#include "DataFormats/PatCandidates/interface/Photon.h"
+#include "DataFormats/PatCandidates/interface/Tau.h"
+// Trigger results
+#include "DataFormats/Common/interface/TriggerResults.h"
+// GEN
+#include "DataFormats/HepMCCandidate/interface/GenParticle.h"
+#include "SimDataFormats/GeneratorProducts/interface/GenEventInfoProduct.h"
+
+
+class Handler {
+  public:
+    Handler(const edm::ParameterSet& iConfig, bool isData)
+          : iConfig_(iConfig), isData_(isData) {}
+    ~Handler() {}
+    
+    template<typename PROD>
+    void getByLabel(const edm::EventBase& iEvent,
+                    const std::string& parname, edm::Handle<PROD>& result) {
+        if (!iConfig_.exists(parname)) {
+            //std::cout << parname + " not found!" << std::endl;
+            return;
+        }
+        const std::string& parvalue = iConfig_.getParameter<std::string>(parname);
+        if (parvalue == "") {
+            return;
+        }
+        bool b = iEvent.getByLabel(parvalue, result);
+        if (!b || !result.isValid()) {
+            std::cout << parname + " is not retrieved successfully!" << std::endl;
+        }
+        return;
+    }
+    
+    void get(const edm::EventBase& iEvent) {
+        getByLabel(iEvent, "l1ETMs", l1ETMs);
+        getByLabel(iEvent, "l1Jets", l1Jets);
+        getByLabel(iEvent, "hltCaloJets", hltCaloJets);
+        getByLabel(iEvent, "hltCaloJetIDPasseds", hltCaloJetIDPasseds);
+        getByLabel(iEvent, "hltCaloJetL1Fasts", hltCaloJetL1Fasts);
+        getByLabel(iEvent, "hltCaloMETs", hltCaloMETs);
+        getByLabel(iEvent, "hltCaloMETCleans", hltCaloMETCleans);
+        getByLabel(iEvent, "hltPFMETs", hltPFMETs);
+        getByLabel(iEvent, "hltPFMETNoMus", hltPFMETNoMus);
+        getByLabel(iEvent, "hltTrackMETs", hltTrackMETs);
+        getByLabel(iEvent, "hltMuons", hltMuons);
+        getByLabel(iEvent, "hltPFCandidates", hltPFCandidates);
+        getByLabel(iEvent, "hltPFJets", hltPFJets);
+        getByLabel(iEvent, "hltPFJetsNoPU", hltPFJetsNoPU);
+        getByLabel(iEvent, "hltPFJetsL1FastL2L3", hltPFJetsL1FastL2L3);
+        getByLabel(iEvent, "hltPFJetsL1FastL2L3NoPU", hltPFJetsL1FastL2L3NoPU);
+        getByLabel(iEvent, "hltPFRecTracks", hltPFRecTracks);
+        getByLabel(iEvent, "hltVertices", hltVertices);
+        getByLabel(iEvent, "hltRho_kt6CaloJets", hltRho_kt6CaloJets);
+        getByLabel(iEvent, "hltRho_kt6PFJets", hltRho_kt6PFJets);
+        getByLabel(iEvent, "recoTracks", recoTracks);
+        getByLabel(iEvent, "recoPFCandidates", recoPFCandidates);
+        getByLabel(iEvent, "recoVertices", recoVertices);
+        getByLabel(iEvent, "recoRho_kt6CaloJets", recoRho_kt6CaloJets);
+        getByLabel(iEvent, "recoRho_kt6PFJets", recoRho_kt6PFJets);
+        getByLabel(iEvent, "patElectrons", patElectrons);
+        getByLabel(iEvent, "patJets", patJets);
+        getByLabel(iEvent, "patMETs", patMETs);
+        getByLabel(iEvent, "patMETTypeIs", patMETTypeIs);
+        getByLabel(iEvent, "patMuons", patMuons);
+        getByLabel(iEvent, "patPhotons", patPhotons);
+        getByLabel(iEvent, "patTaus", patTaus);
+        getByLabel(iEvent, "triggerResults", triggerResults);
+        if (!isData_) {
+            getByLabel(iEvent, "genJets", genJets);
+            getByLabel(iEvent, "genMETs", genMETs);
+            getByLabel(iEvent, "genParticles", genParticles);
+            getByLabel(iEvent, "genEventInfo", genEventInfo);
+        }
+        getByLabel(iEvent, "hltPFPileUpFlag", hltPFPileUpFlags);
+        getByLabel(iEvent, "pfPileUpFlag", patPFPileUpFlags);
+    }
+    
+    // L1
+    edm::Handle<std::vector<l1extra::L1EtMissParticle> > l1ETMs;
+    edm::Handle<std::vector<l1extra::L1JetParticle> >    l1Jets;
+    
+    // HLT
+    edm::Handle<std::vector<reco::CaloJet      > > hltCaloJets;
+    edm::Handle<std::vector<reco::CaloJet      > > hltCaloJetIDPasseds;
+    edm::Handle<std::vector<reco::CaloJet      > > hltCaloJetL1Fasts;
+    edm::Handle<std::vector<reco::CaloMET      > > hltCaloMETs;
+    edm::Handle<std::vector<reco::CaloMET      > > hltCaloMETCleans;
+    edm::Handle<std::vector<reco::MET          > > hltPFMETs;
+    edm::Handle<std::vector<reco::MET          > > hltPFMETNoMus;
+    edm::Handle<std::vector<reco::MET          > > hltTrackMETs;
+    edm::Handle<std::vector<reco::Muon         > > hltMuons;
+    edm::Handle<std::vector<reco::PFCandidate  > > hltPFCandidates;
+    edm::Handle<std::vector<reco::PFJet        > > hltPFJets;
+    edm::Handle<std::vector<reco::PFJet        > > hltPFJetsNoPU;
+    edm::Handle<std::vector<reco::PFJet        > > hltPFJetsL1FastL2L3;
+    edm::Handle<std::vector<reco::PFJet        > > hltPFJetsL1FastL2L3NoPU;
+    edm::Handle<std::vector<reco::PFRecTrack   > > hltPFRecTracks;
+    edm::Handle<std::vector<reco::Vertex       > > hltVertices;
+    edm::Handle<double                           > hltRho_kt6CaloJets;
+    edm::Handle<double                           > hltRho_kt6PFJets;
+
+    // RECO
+    edm::Handle<std::vector<reco::Track        > > recoTracks;
+    edm::Handle<std::vector<reco::PFCandidate  > > recoPFCandidates;
+    edm::Handle<std::vector<reco::Vertex       > > recoVertices;
+    edm::Handle<double                           > recoRho_kt6CaloJets;
+    edm::Handle<double                           > recoRho_kt6PFJets;
+
+    // PAT
+    edm::Handle<std::vector<pat::Electron      > > patElectrons;
+    edm::Handle<std::vector<pat::Jet           > > patJets;
+    edm::Handle<std::vector<pat::MET           > > patMETs;
+    edm::Handle<std::vector<pat::MET           > > patMETTypeIs;
+    edm::Handle<std::vector<pat::Muon          > > patMuons;
+    edm::Handle<std::vector<pat::Photon        > > patPhotons;
+    edm::Handle<std::vector<pat::Tau           > > patTaus;
+    
+    // Trigger results
+    edm::Handle<edm::TriggerResults>               triggerResults;
+    
+    // GEN
+    edm::Handle<std::vector<reco::GenJet       > > genJets;
+    edm::Handle<std::vector<reco::GenMET       > > genMETs;
+    edm::Handle<std::vector<reco::GenParticle  > > genParticles;
+    edm::Handle<std::vector<GenEventInfoProduct> > genEventInfo;
+    
+    // User
+    edm::Handle<std::vector<bool               > > hltPFPileUpFlags;
+    edm::Handle<std::vector<bool               > > patPFPileUpFlags;
+    
+  private:
+    edm::ParameterSet iConfig_;
+    bool isData_;
+};
+
+
+#endif

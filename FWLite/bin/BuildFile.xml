@@ -1,0 +1,17 @@
+<use   name="root"/>
+<!--use   name="rootmath"/-->
+<!--use   name="boost"/-->
+<use   name="FWCore/FWLite"/>
+<use   name="DataFormats/FWLite"/>
+<use   name="FWCore/PythonParameterSet"/>
+<!--use   name="DataFormats/Luminosity"/-->
+<!--use   name="CommonTools/Utils"/-->
+<!--use   name="CommonTools/ParticleFlow"/-->
+<use   name="DataFormats/PatCandidates"/>
+<!--use   name="PhysicsTools/FWLite"/-->
+<!--use   name="PhysicsTools/Utilities"/-->
+<!--use   name="PhysicsTools/SelectorUtils"/-->
+<use   name="JetMETTriggerAnalysis/FWLite"/>
+<environment>
+  <bin   file="compactify.cc"></bin>
+</environment>
