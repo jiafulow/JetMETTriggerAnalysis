@@ -1,5 +1,5 @@
-#ifndef HANDLER_H
-#define HANDLER_H
+#ifndef HANDLER_H_
+#define HANDLER_H_
 
 #include "DataFormats/FWLite/interface/Handle.h"
 #include "DataFormats/FWLite/interface/Event.h"
@@ -44,6 +44,7 @@
 // GEN
 #include "DataFormats/HepMCCandidate/interface/GenParticle.h"
 #include "SimDataFormats/GeneratorProducts/interface/GenEventInfoProduct.h"
+#include "SimDataFormats/PileupSummaryInfo/interface/PileupSummaryInfo.h"
 
 
 class Handler {
@@ -56,7 +57,7 @@ class Handler {
     void getByLabel(const edm::EventBase& iEvent,
                     const std::string& parname, edm::Handle<PROD>& result) {
         if (!iConfig_.exists(parname)) {
-            //std::cout << parname + " not found!" << std::endl;
+            std::cout << "Handler: " << parname + " not found!" << std::endl;
             return;
         }
         const std::string& parvalue = iConfig_.getParameter<std::string>(parname);
@@ -65,7 +66,7 @@ class Handler {
         }
         bool b = iEvent.getByLabel(parvalue, result);
         if (!b || !result.isValid()) {
-            std::cout << parname + " is not retrieved successfully!" << std::endl;
+            std::cout << "Handler: " << parname + " is not retrieved successfully!" << std::endl;
         }
         return;
     }
@@ -78,6 +79,7 @@ class Handler {
         getByLabel(iEvent, "hltCaloJetL1Fasts", hltCaloJetL1Fasts);
         getByLabel(iEvent, "hltCaloMETs", hltCaloMETs);
         getByLabel(iEvent, "hltCaloMETCleans", hltCaloMETCleans);
+        getByLabel(iEvent, "hltCaloMETJetIDCleans", hltCaloMETJetIDCleans);
         getByLabel(iEvent, "hltPFMETs", hltPFMETs);
         getByLabel(iEvent, "hltPFMETNoMus", hltPFMETNoMus);
         getByLabel(iEvent, "hltTrackMETs", hltTrackMETs);
@@ -109,14 +111,15 @@ class Handler {
             getByLabel(iEvent, "genMETs", genMETs);
             getByLabel(iEvent, "genParticles", genParticles);
             getByLabel(iEvent, "genEventInfo", genEventInfo);
+            getByLabel(iEvent, "simPileupInfo", simPileupInfo);
         }
-        getByLabel(iEvent, "hltPFPileUpFlag", hltPFPileUpFlags);
-        getByLabel(iEvent, "pfPileUpFlag", patPFPileUpFlags);
+        getByLabel(iEvent, "hltPFPileUpFlags", hltPFPileUpFlags);
+        getByLabel(iEvent, "patPFPileUpFlags", patPFPileUpFlags);
     }
     
     // L1
     edm::Handle<std::vector<l1extra::L1EtMissParticle> > l1ETMs;
-    edm::Handle<std::vector<l1extra::L1JetParticle> >    l1Jets;
+    edm::Handle<std::vector<l1extra::L1JetParticle   > > l1Jets;
     
     // HLT
     edm::Handle<std::vector<reco::CaloJet      > > hltCaloJets;
@@ -124,6 +127,7 @@ class Handler {
     edm::Handle<std::vector<reco::CaloJet      > > hltCaloJetL1Fasts;
     edm::Handle<std::vector<reco::CaloMET      > > hltCaloMETs;
     edm::Handle<std::vector<reco::CaloMET      > > hltCaloMETCleans;
+    edm::Handle<std::vector<reco::CaloMET      > > hltCaloMETJetIDCleans;
     edm::Handle<std::vector<reco::MET          > > hltPFMETs;
     edm::Handle<std::vector<reco::MET          > > hltPFMETNoMus;
     edm::Handle<std::vector<reco::MET          > > hltTrackMETs;
@@ -155,13 +159,14 @@ class Handler {
     edm::Handle<std::vector<pat::Tau           > > patTaus;
     
     // Trigger results
-    edm::Handle<edm::TriggerResults>               triggerResults;
+    edm::Handle<edm::TriggerResults              > triggerResults;
     
-    // GEN
+    // GEN/SIM
     edm::Handle<std::vector<reco::GenJet       > > genJets;
     edm::Handle<std::vector<reco::GenMET       > > genMETs;
     edm::Handle<std::vector<reco::GenParticle  > > genParticles;
-    edm::Handle<std::vector<GenEventInfoProduct> > genEventInfo;
+    edm::Handle<GenEventInfoProduct              > genEventInfo;
+    edm::Handle<std::vector<PileupSummaryInfo  > > simPileupInfo;
     
     // User
     edm::Handle<std::vector<bool               > > hltPFPileUpFlags;
@@ -172,5 +177,4 @@ class Handler {
     bool isData_;
 };
 
-
-#endif
+#endif  // HANDLER_H_

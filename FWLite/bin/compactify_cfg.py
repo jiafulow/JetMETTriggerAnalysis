@@ -35,13 +35,19 @@ if False:
     process.input.fileNames.extend([dirname + basename for basename in basenamelist])
 
 
-print "number of input files:", len(process.input.fileNames)
-
 process.output = cms.PSet(
     fileName = cms.string("compactified.root"),
 )
 
 process.analyzer = cms.PSet(
+    jetIDSelector = cms.PSet(
+        version = cms.string('PURE09'),
+        quality = cms.string('LOOSE'),
+    ),
+    pfJetIDSelector = cms.PSet(
+        version = cms.string('FIRSTDATA'),
+        quality = cms.string('LOOSE'),
+    ),
     triggers = cms.vstring(
         "HLT_PFMET150_v7",
         #"HLT_MET200_v12",
@@ -79,10 +85,11 @@ process.handler = cms.PSet(
     hltCaloJetL1Fasts = cms.string("hltCaloJetL1FastJetCorrected"),
     hltCaloMETs = cms.string("hltMet"),
     hltCaloMETCleans = cms.string("hltMetClean"),
+    hltCaloMETJetIDCleans = cms.string("hltMetJetIDClean"),
     hltPFMETs = cms.string("hltPFMETProducer"),
     hltPFMETNoMus = cms.string("hltPFMETnoMu"),
     hltTrackMETs = cms.string("hltTrackMetProducer"),
-    #hltMuons = cms.string("hltMuons"),
+    hltMuons = cms.string(""),
     hltPFCandidates = cms.string("hltParticleFlow"),
     hltPFJets = cms.string("hltAntiKT5PFJets"),
     hltPFJetsNoPU = cms.string("hltAntiKT5PFJetsNoPU"),
@@ -93,7 +100,7 @@ process.handler = cms.PSet(
     hltRho_kt6CaloJets = cms.string("hltKT6CaloJets:rho"),
     hltRho_kt6PFJets = cms.string("hltKT6PFJets:rho"),
     # RECO
-    #recoTracks = cms.string(""),
+    recoTracks = cms.string(""),
     recoPFCandidates = cms.string("particleFlow"),
     recoVertices = cms.string("goodOfflinePrimaryVertices"),
     recoRho_kt6CaloJets = cms.string("kt6CaloJets:rho"),
@@ -102,17 +109,18 @@ process.handler = cms.PSet(
     patElectrons = cms.string("selectedPatElectronsPFlow"),
     patJets = cms.string("selectedPatJetsPFlow"),
     patMETs = cms.string("patMETsPFlow"),
-    #patMETTypeIs = cms.string("patMETsPFlow"),
+    patMETTypeIs = cms.string(""),
     patMuons = cms.string("selectedPatMuonsPFlow"),
-    #patPhotons = cms.string(""),
-    #patTaus = cms.string(""),
+    patPhotons = cms.string(""),
+    patTaus = cms.string(""),
     # Trigger results
     triggerResults = cms.string("TriggerResults"),
     # GEN
     genJets = cms.string("ak5GenJets"),
     genMETs = cms.string("genMetTrue"),
     genParticles = cms.string("genParticles"),
-    #genEventInfo = cms.string(""),
+    genEventInfo = cms.string("generator"),
+    simPileupInfo = cms.string("addPileupInfo"),
     # User
     hltPFPileUpFlags = cms.string("hltPFPileUpFlag"),
     patPFPileUpFlags = cms.string("pfPileUpFlag"),

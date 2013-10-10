@@ -2,12 +2,18 @@
 
 #ifdef __CINT__
 
-#pragma link C++ class SimpleLorentzVector+;
-#pragma link C++ class SimpleParticle+;
-#pragma link C++ class std::vector<SimpleParticle>+;
-#pragma link C++ class SimpleJet+;
-#pragma link C++ class std::vector<SimpleJet>+;
-#pragma link C++ class SimpleMET+;
+#pragma link C++ class simple::LorentzVector+;
+#pragma link C++ class std::vector<simple::LorentzVector>+;
+#pragma link C++ class simple::Particle+;
+#pragma link C++ class std::vector<simple::Particle>+;
+#pragma link C++ class simple::Jet+;
+#pragma link C++ class std::vector<simple::Jet>+;
+#pragma link C++ class simple::CaloJet+;
+#pragma link C++ class std::vector<simple::CaloJet>+;
+#pragma link C++ class simple::PFJet+;
+#pragma link C++ class std::vector<simple::PFJet>+;
+#pragma link C++ class simple::MET+;
+#pragma link C++ class simple::Event+;
 
 #endif
 

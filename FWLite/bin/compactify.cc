@@ -12,53 +12,19 @@
 #include "FWCore/FWLite/interface/AutoLibraryLoader.h"
 #include "FWCore/ParameterSet/interface/ProcessDesc.h"
 #include "FWCore/PythonParameterSet/interface/PythonProcessDesc.h"
-//// CMSSW: DataFormats
-//#include "DataFormats/Common/interface/TriggerResults.h"
-
+// CMSSW: Utilities
+#include "PhysicsTools/SelectorUtils/interface/JetIDSelectionFunctor.h"
+#include "PhysicsTools/SelectorUtils/interface/PFJetIDSelectionFunctor.h"
+// CMSSW: JetMETTriggerAnalysis
 #include "JetMETTriggerAnalysis/FWLite/interface/Handler.h"
 #include "JetMETTriggerAnalysis/FWLite/interface/SimpleCandidate.h"
+#include "JetMETTriggerAnalysis/FWLite/interface/JSONFilter.h"
 #endif
-
-//______________________________________________________________________________
-// PFJetID, refer PhysicsTools/SelectorUtils/interface/PFJetIDSelectionFunctor.h
-bool PFJetID(const pat::Jet& jet, std::string wp="L") {
-    double eta = jet.eta();
-    float chf = jet.chargedHadronEnergyFraction();
-	float nhf = ( jet.neutralHadronEnergyFraction() + jet.HFHadronEnergyFraction() );
-	float cef = jet.chargedEmEnergyFraction();
-	float nef = jet.neutralEmEnergyFraction();
-	int nch = jet.chargedMultiplicity();
-	int nconstituents = jet.numberOfDaughters();
-    bool ret = true;
-    if (wp == "L") {
-        ret = (nconstituents > 1) &&
-              (nef < 0.99) &&
-              (nhf < 0.99) &&
-              ((cef < 0.99) || std::abs(eta) > 2.4) &&
-              ((chf > 0.) || std::abs(eta) > 2.4) &&
-              ((nch > 0) || std::abs(eta) > 2.4);
-    } else if (wp == "M") {
-        ret = (nconstituents > 1) &&
-              (nef < 0.95) &&
-              (nhf < 0.95) &&
-              ((cef < 0.99) || std::abs(eta) > 2.4) &&
-              ((chf > 0.) || std::abs(eta) > 2.4) &&
-              ((nch > 0) || std::abs(eta) > 2.4);
-    } else if (wp == "T") {
-        ret = (nconstituents > 1) &&
-              (nef < 0.90) &&
-              (nhf < 0.90) &&
-              ((cef < 0.99) || std::abs(eta) > 2.4) &&
-              ((chf > 0.) || std::abs(eta) > 2.4) &&
-              ((nch > 0) || std::abs(eta) > 2.4);
-    }
-    return ret;
-}
 
 
 //______________________________________________________________________________
 template<typename T>
-void simple_fill(const T& cand, SimpleLorentzVector& simple) {
+void simple_fill(const T& cand, simple::LorentzVector& simple) {
     simple.px     = cand.p4().px();
     simple.py     = cand.p4().py();
     simple.pz     = cand.p4().pz();
@@ -66,10 +32,11 @@ void simple_fill(const T& cand, SimpleLorentzVector& simple) {
     simple.pt     = cand.p4().pt();
     simple.eta    = cand.p4().eta();
     simple.phi    = cand.p4().phi();
+    return;
 }
 
 template<typename T>
-void simple_fill(const T& cand, SimpleParticle& simple) {
+void simple_fill(const T& cand, bool isPU, simple::Particle& simple) {
     simple.px     = cand.p4().px();
     simple.py     = cand.p4().py();
     simple.pz     = cand.p4().pz();
@@ -79,12 +46,20 @@ void simple_fill(const T& cand, SimpleParticle& simple) {
     simple.phi    = cand.p4().phi();
     simple.charge = cand.charge();
     simple.pdgId  = cand.pdgId();
-    simple.isPU   = false;  // need to update manually!
+    simple.isPU   = isPU;
+    return;
 }
 
+template<typename T>
+void simple_fill(const T& cand, simple::Particle& simple) {
+    simple_fill(cand, false, simple);
+    return;
+}
 
 template<typename T>
-void simple_fill(const T& cand, SimpleJet& simple) {
+void simple_fill(const T& cand, bool jetID, simple::Jet& simple) {
+    const pat::Jet* patJet = dynamic_cast<const pat::Jet*>(&cand);
+    
     simple.px     = cand.p4().px();
     simple.py     = cand.p4().py();
     simple.pz     = cand.p4().pz();
@@ -92,13 +67,19 @@ void simple_fill(const T& cand, SimpleJet& simple) {
     simple.pt     = cand.p4().pt();
     simple.eta    = cand.p4().eta();
     simple.phi    = cand.p4().phi();
-    simple.jetIdL = PFJetId(cand, "L");
-    simple.jetIdT = PFJetId(cand, "T");
+    simple.rawpt  = (patJet != 0 ? patJet->correctedP4(0).pt() : -999);
+    simple.jetID  = jetID;
     return;
 }
 
 template<typename T>
-void simple_fill(const T& cand, SimpleMET& simple) {
+void simple_fill(const T& cand, simple::Jet& simple) {
+    simple_fill(cand, true, simple);
+    return;
+}
+
+template<typename T>
+void simple_fill(const T& cand, simple::MET& simple) {
     simple.px     = cand.p4().px();
     simple.py     = cand.p4().py();
     simple.pz     = cand.p4().pz();
@@ -107,6 +88,15 @@ void simple_fill(const T& cand, SimpleMET& simple) {
     simple.eta    = cand.p4().eta();
     simple.phi    = cand.p4().phi();
     simple.sumEt  = cand.sumEt();
+    return;
+}
+
+void simple_fill(const edm::EventBase& iEvent, unsigned int nPV, bool json, simple::Event& simple) {
+    simple.run    = iEvent.id().run();
+    simple.lumi   = iEvent.id().luminosityBlock();
+    simple.event  = iEvent.id().event();
+    simple.nPV    = nPV;
+    simple.json   = json;
     return;
 }
 
@@ -119,7 +109,7 @@ int main(int argc, char *argv[]) {
     //gSystem->Load("libDataFormatsFWLite");
     
     // Generate libraries
-    //gInterpreter->GenerateDictionary("SimpleMET", "JetMETTriggerAnalysis/FWLite/interface/SimpleCandidate.h");
+    //gInterpreter->GenerateDictionary("simple::MET", "JetMETTriggerAnalysis/FWLite/interface/simple::Candidate.h");
 
     // Load config file
     std::string cfgfilename = "compactify_cfg.py";
@@ -170,25 +160,63 @@ int main(int argc, char *argv[]) {
     
     //__________________________________________________________________________
     // Prepare output tree
-    std::vector<SimpleLorentzVector> hltCaloJets;
-    std::vector<SimpleLorentzVector> hltPFJets;
-    SimpleMET hltCaloMET;
-    SimpleMET hltPFMET;
-    // event weights and event flags
+    // #FIXME - PU weight, PDF weight
+    simple::Event simpleEvent;
+    bool triggerFlags[99]; int nTriggerFlags = triggers.size() + 1;  // last one is "OR" combination
+    bool metfilterFlags[99]; int nMetfilterFlags = metfilters.size() + 1;  // last one is "AND" combination
+    // HLT
+    std::vector<simple::Particle> hltPFCandidates;
+    std::vector<simple::CaloJet> hltCaloJets;
+    std::vector<simple::PFJet> hltPFJets;
+    simple::MET hltCaloMET;
+    simple::MET hltCaloMETClean;
+    simple::MET hltCaloMETJetIDClean;
+    simple::MET hltPFMET;
+    simple::MET hltTrackMET;
+    double hltRho_kt6CaloJets, hltRho_kt6PFJets;
+    // non-HLT
+    std::vector<simple::Particle> recoPFCandidates;
+    std::vector<simple::PFJet> patJets;
+    simple::MET patMET;
+    double recoRho_kt6CaloJets, recoRho_kt6PFJets;
+    
     
     TFile* outfile = new TFile(outfilename.c_str(), "RECREATE");
     TTree* outtree = new TTree("Events", "Events");
+    outtree->Branch("event", &simpleEvent);
+    outtree->Branch("triggerFlags", triggerFlags, Form("triggerFlags[%i]/b", nTriggerFlags));
+    outtree->Branch("metfilterFlags", metfilterFlags, Form("metfilterFlags[%i]/b", nMetfilterFlags));
+    // HLT
+    outtree->Branch("hltPFCandidates", &hltPFCandidates);
     outtree->Branch("hltCaloJets", &hltCaloJets);
-    outtree->Branch("hltCaloJets", &hltPFJets);
+    outtree->Branch("hltPFJets", &hltPFJets);
     outtree->Branch("hltCaloMET", &hltCaloMET);
-    outtree->Branch("hltCaloMET", &hltPFMET);
+    outtree->Branch("hltCaloMETClean", &hltCaloMETClean);
+    outtree->Branch("hltCaloMETJetIDClean", &hltCaloMETJetIDClean);
+    outtree->Branch("hltPFMET", &hltPFMET);
+    outtree->Branch("hltTrackMET", &hltTrackMET);
+    outtree->Branch("hltRho_kt6CaloJets", &hltRho_kt6CaloJets);
+    outtree->Branch("hltRho_kt6PFJets", &hltRho_kt6PFJets);
+    // non-HLT
+    outtree->Branch("recoPFCandidates", &recoPFCandidates);
+    outtree->Branch("patJets", &patJets);
+    outtree->Branch("patMET", &patMET);
+    outtree->Branch("recoRho_kt6CaloJets", &recoRho_kt6CaloJets);
+    outtree->Branch("recoRho_kt6PFJets", &recoRho_kt6PFJets);
     
+    //__________________________________________________________________________
+    // JetID selector
+    JetIDSelectionFunctor jetIDSelectionFunctor( analyzerpset.getParameter<edm::ParameterSet>("jetIDSelector") );
+    pat::strbitset jetIDBitSet = jetIDSelectionFunctor.getBitTemplate();
+    PFJetIDSelectionFunctor pfJetIDSelectionFunctor( analyzerpset.getParameter<edm::ParameterSet>("pfJetIDSelector") );
+    pat::strbitset pfJetIDBitSet = pfJetIDSelectionFunctor.getBitTemplate();
     
     //__________________________________________________________________________
     // Loop over events
     fwlite::ChainEvent ev(infilenames);
     int ievent = 0;
     int jevent = 0;
+    std::cout << "<<< number of input files: " << infilenames.size() << std::endl;
     for(ev.toBegin(); !ev.atEnd(); ++ev, ++ievent) {
         // Skip events
         if (ievent < skipEvents)  continue;
@@ -196,44 +224,162 @@ int main(int argc, char *argv[]) {
         if (runMax > 0 && (int)ev.id().run() > runMax)  continue;
         // Stop event loop
         if (maxEvents > 0 && (ievent >= (maxEvents + skipEvents)) )  break;
-
+        
+        if (verbose)  std::cout << "=== iEvent " << ievent << ", jEvent " << jevent << " ===" << std::endl;
         const edm::EventBase& eventbase = ev;
         handler.get(eventbase);
         
         
         //______________________________________________________________________
+        // Event info
+        if (verbose)  std::cout << "compactify: Begin filling event info..." << std::endl;
+        bool goodjson = jsonContainsEvent(lumisToProcess, ev);
+        unsigned int nPV = handler.recoVertices->size();
+        simple_fill(ev, nPV, goodjson, simpleEvent);
+        
+        //______________________________________________________________________
+        // Trigger results
+        if (verbose)  std::cout << "compactify: Begin filling trigger results..." << std::endl;
+        edm::TriggerResultsByName resultsByName = ev.triggerResultsByName("HLT");  //< from original HLT
+        //edm::TriggerResultsByName resultsByName = ev.triggerResultsByName("HLT3");  //< from production mode (always true)
+        //edm::TriggerResultsByName resultsByName = ev.triggerResultsByName("HLT3PB");  //< from filtering mode
+        bool triggerFlagsOR = false;
+        for (unsigned int i = 0; i < triggers.size(); ++i) {
+            bool accept = resultsByName.accept(triggers.at(i));
+            triggerFlags[i] = accept;
+            if (accept)  triggerFlagsOR = true;
+        }
+        triggerFlags[triggers.size()] = triggerFlagsOR;
+        
+        //______________________________________________________________________
+        // MET filter results
+        if (verbose)  std::cout << "compactify: Begin filling MET filter results..." << std::endl;
+        edm::TriggerResultsByName resultsByNamePAT = ev.triggerResultsByName("PAT");
+        bool metfilterFlagsAND = true;
+        for (unsigned int i = 0; i < metfilters.size(); ++i) {
+            bool accept = resultsByNamePAT.accept(metfilters.at(i));
+            metfilterFlags[i] = accept;
+            if (!accept)  metfilterFlagsAND = false;
+        }
+        metfilterFlags[metfilters.size()] = metfilterFlagsAND;
+        
+        //______________________________________________________________________
+        // hltPFCandidates
+        if (verbose)  std::cout << "compactify: Begin filling hltPFCandidates..." << std::endl;
+        hltPFCandidates.clear();
+        assert(handler.hltPFPileUpFlags->size() == handler.hltPFCandidates->size());
+        for (unsigned int i = 0; i < handler.hltPFCandidates->size(); ++i) {
+            simple::Particle simple;
+            const reco::PFCandidate& cand = handler.hltPFCandidates->at(i);
+            const bool& isPU = handler.hltPFPileUpFlags->at(i);
+            simple_fill(cand, isPU, simple);
+            hltPFCandidates.push_back(simple);
+        }
+        
+        //______________________________________________________________________
         // hltCaloJets
+        if (verbose)  std::cout << "compactify: Begin filling hltCaloJets..." << std::endl;
         hltCaloJets.clear();
         for (unsigned int i = 0; i < handler.hltCaloJets->size(); ++i) {
-            SimpleLorentzVector simple;
-            simple_fill(handler.hltCaloJets->at(i), simple);
+            const reco::CaloJet& jet = handler.hltCaloJets->at(i);
+            simple::CaloJet simple;
+            simple_fill(jet, simple);
             hltCaloJets.push_back(simple);
         }
         
+        //______________________________________________________________________
         // hltPFJets
+        if (verbose)  std::cout << "compactify: Begin filling hltPFJets..." << std::endl;
         hltPFJets.clear();
         for (unsigned int i = 0; i < handler.hltPFJets->size(); ++i) {
-            SimpleLorentzVector simple;
-            simple_fill(handler.hltPFJets->at(i), simple);
+            const reco::PFJet& jet = handler.hltPFJets->at(i);
+            simple::PFJet simple;
+            //simple_fill(jet, pfJetIDSelectionFunctor(jet, pfJetIDBitSet), simple);
+            simple_fill(jet, simple);
             hltPFJets.push_back(simple);
         }
         
+        //______________________________________________________________________
         // hltCaloMET
+        if (verbose)  std::cout << "compactify: Begin filling hltCaloMET..." << std::endl;
         simple_fill(handler.hltCaloMETs->at(0), hltCaloMET);
         
-        // hltPFMET
-        simple_fill(handler.hltPFMETs->at(0), hltPFMET);
-        
+        //______________________________________________________________________
+        // hltCaloMETClean
+        if (verbose)  std::cout << "compactify: Begin filling hltCaloMETClean..." << std::endl;
+        simple_fill(handler.hltCaloMETCleans->at(0), hltCaloMETClean);
         
         //______________________________________________________________________
+        // hltCaloMETJetIDClean
+        if (verbose)  std::cout << "compactify: Begin filling hltCaloMETJetIDClean..." << std::endl;
+        simple_fill(handler.hltCaloMETJetIDCleans->at(0), hltCaloMETJetIDClean);
+        
+        //______________________________________________________________________
+        // hltPFMET
+        if (verbose)  std::cout << "compactify: Begin filling hltPFMET..." << std::endl;
+        simple_fill(handler.hltPFMETs->at(0), hltPFMET);
+        
+        //______________________________________________________________________
+        // hltTrackMET
+        if (verbose)  std::cout << "compactify: Begin filling hltTrackMET..." << std::endl;
+        simple_fill(handler.hltTrackMETs->at(0), hltTrackMET);
+        
+        //______________________________________________________________________
+        // hltRhos
+        if (verbose)  std::cout << "compactify: Begin filling hltRhos..." << std::endl;
+        hltRho_kt6CaloJets = *(handler.hltRho_kt6CaloJets);
+        hltRho_kt6PFJets = *(handler.hltRho_kt6PFJets);
+        
+        //______________________________________________________________________
+        // recoPFCandidates
+        if (verbose)  std::cout << "compactify: Begin filling recoPFCandidates..." << std::endl;
+        recoPFCandidates.clear();
+        assert(handler.patPFPileUpFlags->size() == handler.recoPFCandidates->size());
+        for (unsigned int i = 0; i < handler.recoPFCandidates->size(); ++i) {
+            simple::Particle simple;
+            const reco::PFCandidate& cand = handler.recoPFCandidates->at(i);
+            const bool& isPU = handler.patPFPileUpFlags->at(i);
+            simple_fill(cand, isPU, simple);
+            recoPFCandidates.push_back(simple);
+        }
+        
+        //______________________________________________________________________
+        // patJets
+        if (verbose)  std::cout << "compactify: Begin filling patJets..." << std::endl;
+        patJets.clear();
+        for (unsigned int i = 0; i < handler.patJets->size(); ++i) {
+            const pat::Jet& jet = handler.patJets->at(i);
+            simple::PFJet simple;
+            simple_fill(jet, pfJetIDSelectionFunctor(jet, pfJetIDBitSet), simple);
+            patJets.push_back(simple);
+        }
+        
+        //______________________________________________________________________
+        // patMET
+        if (verbose)  std::cout << "compactify: Begin filling patMET..." << std::endl;
+        simple_fill(handler.patMETs->at(0), patMET);
+        
+        //______________________________________________________________________
+        // patTrackMET
+        // ???
+        
+        //______________________________________________________________________
+        // recoRhos
+        if (verbose)  std::cout << "compactify: Begin filling recoRhos..." << std::endl;
+        recoRho_kt6CaloJets = *(handler.recoRho_kt6CaloJets);
+        recoRho_kt6PFJets = *(handler.recoRho_kt6PFJets);
+        
+        //______________________________________________________________________
+        // Fill
         outtree->Fill();
-
         ++jevent;
     }
     
     outfile->cd();
     outtree->Write();
     outfile->Close();
+    
+    std::cout << ">>> number of events: " << jevent << "/" << ievent << std::endl;
     
     return 0;
 }
