@@ -10,7 +10,7 @@ lumilist = LumiList.LumiList(filename = JSONfile).getCMSSWString().split(',')
 process = cms.Process("p")
 process.input = cms.PSet(
     #fileNames   = cms.vstring("../../MyProducts.MET.50k.root"),
-    fileNames   = cms.vstring("../../../HLTrigger/HLTanalyzers/test/openHLT/MyProducts.MET.5k.root"),
+    fileNames   = cms.vstring("../../../HLTrigger/HLTanalyzers/test/openHLT/MyProducts.MET.root"),
     #fileNames   = cms.vstring("/eos/uscms/store/user/jiafu/METTriggers/skimHLTPFMET150_eos_20130909/TT_CT10_TuneZ2star_8TeV-powheg-tauola-PU25bx50_2/MyProducts.MC_2_1_ukP.root"),
     maxEvents   = cms.int32(-1),                            ## optional
     runMin      = cms.int32(-1),                            ## optional
@@ -24,7 +24,8 @@ if False:
     import os
     #dirname = "/pnfs/cms/WAX/resilient/jiafulow/METTriggers/skimHLTPFMET150_20130909/WJetsToLNu_TuneZ2Star_8TeV-madgraph-tarball-PU25bx50/"
     #dirname = "/eos/uscms/store/user/jiafu/METTriggers/skimHLTPFMET150_eos_20130909/TT_CT10_TuneZ2star_8TeV-powheg-tauola-PU25bx50_2/"
-    dirname = "/pnfs/cms/WAX/resilient/jiafulow/METTriggers/skimHLTPFMET150_20130909/MET2012D/"
+    #dirname = "/pnfs/cms/WAX/resilient/jiafulow/METTriggers/skimHLTPFMET150_20130909/MET2012D/"
+    dirname = "/pnfs/cms/WAX/resilient/jiafulow/METTriggers/skimHLTL1ETM40_20131007/MET-Run2012D-PromptReco-v1/"
     if not dirname.endswith("/"):  dirname += "/"
     basenamelist = os.listdir(dirname)
     if dirname.startswith("/pnfs/cms/"):
@@ -32,7 +33,8 @@ if False:
     if dirname.startswith("/eos/uscms"):  # some files have size = 0
         basenamelist = [basename for basename in basenamelist if os.path.getsize(dirname + basename) > 1000]
     process.input.fileNames = cms.vstring()
-    process.input.fileNames.extend([dirname + basename for basename in basenamelist])
+    process.input.fileNames.extend([dirname + basename for basename in basenamelist[:1]])
+    #process.input.fileNames.extend([dirname + basename for basename in basenamelist])
 
 
 process.output = cms.PSet(
@@ -81,7 +83,9 @@ process.handler = cms.PSet(
     l1Jets = cms.string(""),
     # HLT
     hltCaloJets = cms.string("hltAntiKT5CaloJets"),
-    hltCaloJetIDPasseds = cms.string("hltCaloJetIDPassed"),
+    #hltCaloJets = cms.string("hltAntiKT5CaloJetsPF"),
+    hltCaloJetIDPasseds = cms.string(""),
+    #hltCaloJetIDPasseds = cms.string("hltCaloJetIDPassed"),
     hltCaloJetL1Fasts = cms.string("hltCaloJetL1FastJetCorrected"),
     hltCaloMETs = cms.string("hltMet"),
     hltCaloMETCleans = cms.string("hltMetClean"),
@@ -101,7 +105,11 @@ process.handler = cms.PSet(
     hltRho_kt6PFJets = cms.string("hltKT6PFJets:rho"),
     # RECO
     recoTracks = cms.string(""),
+    recoCaloJets = cms.string("ak5CaloJets"),
+    recoCaloMETs = cms.string("met"),
     recoPFCandidates = cms.string("particleFlow"),
+    recoPFJets = cms.string("ak5PFJets"),
+    recoPFMETs = cms.string("pfMet"),
     recoVertices = cms.string("goodOfflinePrimaryVertices"),
     recoRho_kt6CaloJets = cms.string("kt6CaloJets:rho"),
     recoRho_kt6PFJets = cms.string("kt6PFJets:rho"),

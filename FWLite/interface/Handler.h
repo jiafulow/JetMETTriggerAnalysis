@@ -94,7 +94,11 @@ class Handler {
         getByLabel(iEvent, "hltRho_kt6CaloJets", hltRho_kt6CaloJets);
         getByLabel(iEvent, "hltRho_kt6PFJets", hltRho_kt6PFJets);
         getByLabel(iEvent, "recoTracks", recoTracks);
+        getByLabel(iEvent, "recoCaloJets", recoCaloJets);
+        getByLabel(iEvent, "recoCaloMETs", recoCaloMETs);
         getByLabel(iEvent, "recoPFCandidates", recoPFCandidates);
+        getByLabel(iEvent, "recoPFJets", recoPFJets);
+        getByLabel(iEvent, "recoPFMETs", recoPFMETs);
         getByLabel(iEvent, "recoVertices", recoVertices);
         getByLabel(iEvent, "recoRho_kt6CaloJets", recoRho_kt6CaloJets);
         getByLabel(iEvent, "recoRho_kt6PFJets", recoRho_kt6PFJets);
@@ -144,7 +148,11 @@ class Handler {
 
     // RECO
     edm::Handle<std::vector<reco::Track        > > recoTracks;
+    edm::Handle<std::vector<reco::CaloJet      > > recoCaloJets;
+    edm::Handle<std::vector<reco::CaloMET      > > recoCaloMETs;
     edm::Handle<std::vector<reco::PFCandidate  > > recoPFCandidates;
+    edm::Handle<std::vector<reco::PFJet        > > recoPFJets;
+    edm::Handle<std::vector<reco::PFMET        > > recoPFMETs;
     edm::Handle<std::vector<reco::Vertex       > > recoVertices;
     edm::Handle<double                           > recoRho_kt6CaloJets;
     edm::Handle<double                           > recoRho_kt6PFJets;
