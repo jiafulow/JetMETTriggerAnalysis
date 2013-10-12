@@ -5,6 +5,8 @@
 #include "TTree.h"
 
 #if !defined(__CINT__) && !defined(__MAKECINT__)
+// CMSSW: DataFormats
+#include "DataFormats/Math/interface/deltaR.h"
 // CMSSW: FWLite
 #include "DataFormats/FWLite/interface/Handle.h"
 #include "DataFormats/FWLite/interface/Event.h"
@@ -12,17 +14,20 @@
 #include "FWCore/FWLite/interface/AutoLibraryLoader.h"
 #include "FWCore/ParameterSet/interface/ProcessDesc.h"
 #include "FWCore/PythonParameterSet/interface/PythonProcessDesc.h"
-// CMSSW: Utilities
-#include "PhysicsTools/SelectorUtils/interface/JetIDSelectionFunctor.h"
-#include "PhysicsTools/SelectorUtils/interface/PFJetIDSelectionFunctor.h"
 // CMSSW: JetMETTriggerAnalysis
-#include "JetMETTriggerAnalysis/FWLite/interface/Handler.h"
 #include "JetMETTriggerAnalysis/FWLite/interface/SimpleCandidate.h"
+#include "JetMETTriggerAnalysis/FWLite/interface/Handler.h"
 #include "JetMETTriggerAnalysis/FWLite/interface/JSONFilter.h"
+#include "JetMETTriggerAnalysis/FWLite/interface/JetIDHelper.h"
+#endif
+
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
 #endif
 
 
 //______________________________________________________________________________
+// Fill
 template<typename T>
 void simple_fill(const T& cand, simple::LorentzVector& simple) {
     simple.px     = cand.p4().px();
@@ -91,17 +96,72 @@ void simple_fill(const T& cand, simple::MET& simple) {
     return;
 }
 
-void simple_fill(const edm::EventBase& iEvent, unsigned int nPV, bool json, simple::Event& simple) {
+void simple_fill(const edm::EventBase& iEvent, unsigned int nPV, 
+                 unsigned int nGoodPV, unsigned int nTruePV, bool json, 
+                 simple::Event& simple) {
     simple.run    = iEvent.id().run();
     simple.lumi   = iEvent.id().luminosityBlock();
     simple.event  = iEvent.id().event();
     simple.nPV    = nPV;
+    simple.nGoodPV= nGoodPV;
     simple.json   = json;
     return;
 }
 
 
 //______________________________________________________________________________
+// Functions
+template<typename T>
+unsigned int count_jets(const std::vector<T>& jets, double ptmin, double etamax) {
+    unsigned int count = 0;
+    for (unsigned int j = 0; j < jets.size(); ++j) {
+        if (jets.at(j).pt() > ptmin && fabs(jets.at(j).eta()) < etamax) {
+            ++count;
+        }
+    }
+    return count;
+}
+
+template<typename T>
+double eval_ht(const std::vector<T>& jets, double ptmin, double etamax) {
+    double ht = 0.0;
+    for (unsigned int j = 0; j < jets.size(); ++j) {
+        const T& jet = jets.at(j);
+        if (jet.pt() > ptmin && fabs(jet.eta()) < etamax) {
+            ht += jets.at(j).pt();
+        }
+    }
+    return ht;
+}
+
+template<typename T>
+double eval_mindphi(double metphi, const std::vector<T>& jets, double ptmin, double etamax) {
+    double mindphi = M_PI;
+    for (unsigned int j = 0; j < jets.size(); ++j) {
+        if (jets.at(j).pt() > ptmin && fabs(jets.at(j).eta()) < etamax) {
+            double dphi = fabs(reco::deltaPhi(jets.at(j).phi(), metphi));
+            if (mindphi > dphi)
+                mindphi = dphi;
+        }
+    }
+    return mindphi;
+}
+
+template<typename T>
+reco::Candidate::LorentzVector build_met(const std::vector<T>& particles, double ptmin, double etamax) {
+    reco::Candidate::LorentzVector met(0,0,0,0);
+    for (unsigned int j = 0; j < particles.size(); ++j) {
+        const T& particle = particles.at(j);
+        if (particle.pt() > ptmin && fabs(particle.eta()) < etamax) {
+            met -= particle.p4();
+        }
+    }
+    return met;
+}
+
+
+//______________________________________________________________________________
+// Compactify
 int main(int argc, char *argv[]) {
     // Load FWLite library
     gSystem->Load("libFWCoreFWLite");
@@ -143,6 +203,8 @@ int main(int argc, char *argv[]) {
     // Read from analyzer pset
     const std::vector<std::string>& triggers = analyzerpset.getParameter<std::vector<std::string> >("triggers");
     const std::vector<std::string>& metfilters = analyzerpset.getParameter<std::vector<std::string> >("metfilters");
+    const edm::ParameterSet& hltJetIDParams = analyzerpset.getParameter<edm::ParameterSet>("hltJetID");
+    const edm::ParameterSet& jetIDParams = analyzerpset.getParameter<edm::ParameterSet>("jetID");
     //const double pfjetPtMin = analyzerpset.getParameter<double>("pfjetPtMin");
     //const double pfjetEtaMax = analyzerpset.getParameter<double>("pfjetEtaMax");
     //const double pfjetEtaMaxCtr = analyzerpset.getParameter<double>("pfjetEtaMaxCtr");
@@ -153,6 +215,8 @@ int main(int argc, char *argv[]) {
     //const double calometjetidPtMin = analyzerpset.getParameter<double>("calometjetidPtMin");
     const bool isData = analyzerpset.getParameter<bool>("isData");
     const bool verbose = analyzerpset.getParameter<bool>("verbose");
+    HLTJetIDHelper hltJetIDHelper(hltJetIDParams);
+    JetIDHelper jetIDHelper(jetIDParams);
     
     // Read from handler pset
     Handler handler(handlerpset, isData);
@@ -160,8 +224,8 @@ int main(int argc, char *argv[]) {
     
     //__________________________________________________________________________
     // Prepare output tree
-    // #FIXME - PU weight, PDF weight
     simple::Event simpleEvent;
+    float weightGenEvent, weightPU, weightPdf;
     bool triggerFlags[99]; int nTriggerFlags = triggers.size() + 1;  // last one is "OR" combination
     bool metfilterFlags[99]; int nMetfilterFlags = metfilters.size() + 1;  // last one is "AND" combination
     // HLT
@@ -184,6 +248,9 @@ int main(int argc, char *argv[]) {
     TFile* outfile = new TFile(outfilename.c_str(), "RECREATE");
     TTree* outtree = new TTree("Events", "Events");
     outtree->Branch("event", &simpleEvent);
+    outtree->Branch("weightGenEvent", &weightGenEvent);
+    outtree->Branch("weightPU", &weightPU);  //FIXME not yet set
+    outtree->Branch("weightPdf", &weightPdf);  //FIXME not yet set
     outtree->Branch("triggerFlags", triggerFlags, Form("triggerFlags[%i]/b", nTriggerFlags));
     outtree->Branch("metfilterFlags", metfilterFlags, Form("metfilterFlags[%i]/b", nMetfilterFlags));
     // HLT
@@ -204,12 +271,6 @@ int main(int argc, char *argv[]) {
     outtree->Branch("recoRho_kt6CaloJets", &recoRho_kt6CaloJets);
     outtree->Branch("recoRho_kt6PFJets", &recoRho_kt6PFJets);
     
-    //__________________________________________________________________________
-    // JetID selector
-    JetIDSelectionFunctor jetIDSelectionFunctor( analyzerpset.getParameter<edm::ParameterSet>("jetIDSelector") );
-    pat::strbitset jetIDBitSet = jetIDSelectionFunctor.getBitTemplate();
-    PFJetIDSelectionFunctor pfJetIDSelectionFunctor( analyzerpset.getParameter<edm::ParameterSet>("pfJetIDSelector") );
-    pat::strbitset pfJetIDBitSet = pfJetIDSelectionFunctor.getBitTemplate();
     
     //__________________________________________________________________________
     // Loop over events
@@ -234,8 +295,13 @@ int main(int argc, char *argv[]) {
         // Event info
         if (verbose)  std::cout << "compactify: Begin filling event info..." << std::endl;
         bool goodjson = jsonContainsEvent(lumisToProcess, ev);
-        unsigned int nPV = handler.recoVertices->size();
-        simple_fill(ev, nPV, goodjson, simpleEvent);
+        //unsigned int nPV = handler.recoVertices->size();
+        unsigned int nPV = 999;
+        unsigned int nGoodPV = handler.recoGoodVertices->size();
+        unsigned int nTruePV = (isData ? 999 : handler.simPileupInfo->front().getTrueNumInteractions());
+        simple_fill(ev, nPV, nGoodPV, nTruePV, goodjson, simpleEvent);
+        weightGenEvent = (isData ? 1.0 : handler.genEventInfo->weight());
+        
         
         //______________________________________________________________________
         // Trigger results
@@ -282,8 +348,16 @@ int main(int argc, char *argv[]) {
         hltCaloJets.clear();
         for (unsigned int i = 0; i < handler.hltCaloJets->size(); ++i) {
             const reco::CaloJet& jet = handler.hltCaloJets->at(i);
+            assert(handler.hltCaloJets->size() == handler.hltCaloJetIDs->size());
+            // These 2 lines don't work in FWLite
+            //const reco::CaloJetRef jetref(handler.hltCaloJets, i);
+            //const reco::JetID jetID_ = (*handler.hltCaloJetIDs)[jetref];
+            assert(handler.hltCaloJetIDs->idSize() == 1);
+            edm::ProductID productid = handler.hltCaloJetIDs->ids().front().first;
+            const reco::JetID jetID_ = handler.hltCaloJetIDs->get(productid, i);
             simple::CaloJet simple;
-            simple_fill(jet, simple);
+            bool jetID = hltJetIDHelper(jet, jetID_);
+            simple_fill(jet, jetID, simple);
             hltCaloJets.push_back(simple);
         }
         
@@ -294,8 +368,8 @@ int main(int argc, char *argv[]) {
         for (unsigned int i = 0; i < handler.hltPFJets->size(); ++i) {
             const reco::PFJet& jet = handler.hltPFJets->at(i);
             simple::PFJet simple;
-            //simple_fill(jet, pfJetIDSelectionFunctor(jet, pfJetIDBitSet), simple);
-            simple_fill(jet, simple);
+            bool jetID = hltJetIDHelper(jet);
+            simple_fill(jet, jetID, simple);
             hltPFJets.push_back(simple);
         }
         
@@ -350,7 +424,8 @@ int main(int argc, char *argv[]) {
         for (unsigned int i = 0; i < handler.patJets->size(); ++i) {
             const pat::Jet& jet = handler.patJets->at(i);
             simple::PFJet simple;
-            simple_fill(jet, pfJetIDSelectionFunctor(jet, pfJetIDBitSet), simple);
+            bool jetID = jetIDHelper(jet);
+            simple_fill(jet, jetID, simple);
             patJets.push_back(simple);
         }
         

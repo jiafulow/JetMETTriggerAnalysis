@@ -63,6 +63,8 @@ namespace simple {
         unsigned int lumi;
         unsigned int event;
         unsigned int nPV;
+        unsigned int nGoodPV;
+        unsigned int nTruePV;
         bool json;
     };
 

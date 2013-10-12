@@ -10,6 +10,7 @@ lumilist = LumiList.LumiList(filename = JSONfile).getCMSSWString().split(',')
 process = cms.Process("p")
 process.input = cms.PSet(
     #fileNames   = cms.vstring("../../MyProducts.MET.50k.root"),
+    #fileNames   = cms.vstring("../../../HLTrigger/HLTanalyzers/test/openHLT/MyProducts.MET.root"),
     fileNames   = cms.vstring("../../../HLTrigger/HLTanalyzers/test/openHLT/MyProducts.MET.root"),
     #fileNames   = cms.vstring("/eos/uscms/store/user/jiafu/METTriggers/skimHLTPFMET150_eos_20130909/TT_CT10_TuneZ2star_8TeV-powheg-tauola-PU25bx50_2/MyProducts.MC_2_1_ukP.root"),
     maxEvents   = cms.int32(-1),                            ## optional
@@ -42,13 +43,43 @@ process.output = cms.PSet(
 )
 
 process.analyzer = cms.PSet(
-    jetIDSelector = cms.PSet(
-        version = cms.string('PURE09'),
-        quality = cms.string('LOOSE'),
+    hltJetID = cms.PSet(
+        hltCaloJetID = cms.PSet(
+            min_N90 = cms.int32( -2 ),
+            min_N90hits = cms.int32( 2 ),
+            min_EMF = cms.double( 1.0E-6 ),
+            max_EMF = cms.double( 999.0 ),
+            JetIDParams = cms.PSet(
+              useRecHits = cms.bool( True ),
+              hbheRecHitsColl = cms.InputTag( "hltHbhereco" ),
+              hoRecHitsColl = cms.InputTag( "hltHoreco" ),
+              hfRecHitsColl = cms.InputTag( "hltHfreco" ),
+              ebRecHitsColl = cms.InputTag( 'hltEcalRecHitAll','EcalRecHitsEB' ),
+              eeRecHitsColl = cms.InputTag( 'hltEcalRecHitAll','EcalRecHitsEE' )
+            ),
+        ),
+        hltPFJetID = cms.PSet(
+            min_CEEF = cms.double( -99.0 ),
+            max_CEEF = cms.double( 99.0 ),
+            min_NEEF = cms.double( -99.0 ),
+            max_NEEF = cms.double( 99.0 ),
+            min_CHEF = cms.double( -99.0 ),
+            max_CHEF = cms.double( 99.0 ),
+            min_NHEF = cms.double( -99.0 ),
+            max_NHEF = cms.double( 0.95 ),
+            triggerType = cms.int32( 85 ),
+            nJet = cms.uint32( 1 )
+        ),
     ),
-    pfJetIDSelector = cms.PSet(
-        version = cms.string('FIRSTDATA'),
-        quality = cms.string('LOOSE'),
+    jetID = cms.PSet(
+        caloJetID = cms.PSet(
+            version = cms.string('PURE09'),
+            quality = cms.string('LOOSE'),
+        ),
+        pfJetID = cms.PSet(
+            version = cms.string('FIRSTDATA'),
+            quality = cms.string('LOOSE'),
+        ),
     ),
     triggers = cms.vstring(
         "HLT_PFMET150_v7",
@@ -74,6 +105,7 @@ process.analyzer = cms.PSet(
     calometcleanPtMin = cms.double(60),
     calometjetidPtMin = cms.double(60),
     isData = cms.bool(True),
+    #verbose = cms.bool(True),
     verbose = cms.bool(False),
 )
 
@@ -110,7 +142,9 @@ process.handler = cms.PSet(
     recoPFCandidates = cms.string("particleFlow"),
     recoPFJets = cms.string("ak5PFJets"),
     recoPFMETs = cms.string("pfMet"),
-    recoVertices = cms.string("goodOfflinePrimaryVertices"),
+    recoVertices = cms.string(""),
+    #recoVertices = cms.string("offlinePrimaryVertices"),
+    recoGoodVertices = cms.string("goodOfflinePrimaryVertices"),
     recoRho_kt6CaloJets = cms.string("kt6CaloJets:rho"),
     recoRho_kt6PFJets = cms.string("kt6PFJets:rho"),
     # PAT
@@ -132,28 +166,6 @@ process.handler = cms.PSet(
     # User
     hltPFPileUpFlags = cms.string("hltPFPileUpFlag"),
     patPFPileUpFlags = cms.string("pfPileUpFlag"),
+    hltCaloJetIDs = cms.string("hltAK5JetID"),
     )
-
-#import ConfigParser
-#config = ConfigParser.ConfigParser()
-#config.read("compactifierinput.ini")
-#for k, v in config.items("Alias"):
-#    v.strip()
-#    process.aliases.values.append(k)
-#    setattr(process.aliases, k, cms.string(v))
-#
-#def parse_branch(expr):
-#    if expr.count("{")==1 and expr.count("}")==1:
-#        if expr[-1]!="}":  raise ValueError("'%s' doesn't end with '}'" % expr)
-#        pos = expr.index("{")
-#        return expr[:pos], expr[pos+1:-1]
-#    elif expr.count("{")==1 or expr.count("}")==1:
-#        raise ValueError("'%s' doesn't have a matching bracket" % expr)
-#    else:
-#        expr += "{/F}"
-#        return parse_branch(expr)
-#for k, v in config.items("Branch"):
-#    v.strip()
-#    process.branches.values.append(k)
-#    setattr(process.branches, k, cms.vstring(parse_branch(v)))
 

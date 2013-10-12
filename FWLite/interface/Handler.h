@@ -100,6 +100,7 @@ class Handler {
         getByLabel(iEvent, "recoPFJets", recoPFJets);
         getByLabel(iEvent, "recoPFMETs", recoPFMETs);
         getByLabel(iEvent, "recoVertices", recoVertices);
+        getByLabel(iEvent, "recoGoodVertices", recoGoodVertices);
         getByLabel(iEvent, "recoRho_kt6CaloJets", recoRho_kt6CaloJets);
         getByLabel(iEvent, "recoRho_kt6PFJets", recoRho_kt6PFJets);
         getByLabel(iEvent, "patElectrons", patElectrons);
@@ -119,6 +120,7 @@ class Handler {
         }
         getByLabel(iEvent, "hltPFPileUpFlags", hltPFPileUpFlags);
         getByLabel(iEvent, "patPFPileUpFlags", patPFPileUpFlags);
+        getByLabel(iEvent, "hltCaloJetIDs", hltCaloJetIDs);
     }
     
     // L1
@@ -154,6 +156,7 @@ class Handler {
     edm::Handle<std::vector<reco::PFJet        > > recoPFJets;
     edm::Handle<std::vector<reco::PFMET        > > recoPFMETs;
     edm::Handle<std::vector<reco::Vertex       > > recoVertices;
+    edm::Handle<std::vector<reco::Vertex       > > recoGoodVertices;
     edm::Handle<double                           > recoRho_kt6CaloJets;
     edm::Handle<double                           > recoRho_kt6PFJets;
 
@@ -179,6 +182,7 @@ class Handler {
     // User
     edm::Handle<std::vector<bool               > > hltPFPileUpFlags;
     edm::Handle<std::vector<bool               > > patPFPileUpFlags;
+    edm::Handle<edm::ValueMap<reco::JetID      > > hltCaloJetIDs;
     
   private:
     edm::ParameterSet iConfig_;
