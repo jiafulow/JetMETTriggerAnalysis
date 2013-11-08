@@ -52,7 +52,7 @@ class Handler {
     Handler(const edm::ParameterSet& iConfig, bool isData)
           : iConfig_(iConfig), isData_(isData) {}
     ~Handler() {}
-    
+
     template<typename PROD>
     void getByLabel(const edm::EventBase& iEvent,
                     const std::string& parname, edm::Handle<PROD>& result) {
@@ -70,10 +70,13 @@ class Handler {
         }
         return;
     }
-    
+
     void get(const edm::EventBase& iEvent) {
-        getByLabel(iEvent, "l1ETMs", l1ETMs);
-        getByLabel(iEvent, "l1Jets", l1Jets);
+        getByLabel(iEvent, "l1METs", l1METs);
+        getByLabel(iEvent, "l1MHTs", l1MHTs);
+        getByLabel(iEvent, "l1CentralJets", l1CentralJets);
+        getByLabel(iEvent, "l1ForwardJets", l1ForwardJets);
+        getByLabel(iEvent, "l1TauJets", l1TauJets);
         getByLabel(iEvent, "hltCaloJets", hltCaloJets);
         getByLabel(iEvent, "hltCaloJetIDPasseds", hltCaloJetIDPasseds);
         getByLabel(iEvent, "hltCaloJetL1Fasts", hltCaloJetL1Fasts);
@@ -122,11 +125,14 @@ class Handler {
         getByLabel(iEvent, "patPFPileUpFlags", patPFPileUpFlags);
         getByLabel(iEvent, "hltCaloJetIDs", hltCaloJetIDs);
     }
-    
+
     // L1
-    edm::Handle<std::vector<l1extra::L1EtMissParticle> > l1ETMs;
-    edm::Handle<std::vector<l1extra::L1JetParticle   > > l1Jets;
-    
+    edm::Handle<std::vector<l1extra::L1EtMissParticle> > l1METs;
+    edm::Handle<std::vector<l1extra::L1EtMissParticle> > l1MHTs;
+    edm::Handle<std::vector<l1extra::L1JetParticle   > > l1CentralJets;
+    edm::Handle<std::vector<l1extra::L1JetParticle   > > l1ForwardJets;
+    edm::Handle<std::vector<l1extra::L1JetParticle   > > l1TauJets;
+
     // HLT
     edm::Handle<std::vector<reco::CaloJet      > > hltCaloJets;
     edm::Handle<std::vector<reco::CaloJet      > > hltCaloJetIDPasseds;
@@ -168,22 +174,22 @@ class Handler {
     edm::Handle<std::vector<pat::Muon          > > patMuons;
     edm::Handle<std::vector<pat::Photon        > > patPhotons;
     edm::Handle<std::vector<pat::Tau           > > patTaus;
-    
+
     // Trigger results
     edm::Handle<edm::TriggerResults              > triggerResults;
-    
+
     // GEN/SIM
     edm::Handle<std::vector<reco::GenJet       > > genJets;
     edm::Handle<std::vector<reco::GenMET       > > genMETs;
     edm::Handle<std::vector<reco::GenParticle  > > genParticles;
     edm::Handle<GenEventInfoProduct              > genEventInfo;
     edm::Handle<std::vector<PileupSummaryInfo  > > simPileupInfo;
-    
+
     // User
     edm::Handle<std::vector<bool               > > hltPFPileUpFlags;
     edm::Handle<std::vector<bool               > > patPFPileUpFlags;
     edm::Handle<edm::ValueMap<reco::JetID      > > hltCaloJetIDs;
-    
+
   private:
     edm::ParameterSet iConfig_;
     bool isData_;

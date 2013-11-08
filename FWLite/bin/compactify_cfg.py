@@ -17,7 +17,7 @@ process.input = cms.PSet(
     runMin      = cms.int32(-1),                            ## optional
     runMax      = cms.int32(-1),                            ## optional
     skipEvents  = cms.int32(0),                             ## optional
-    reportEvery = cms.int32(100),                           ## optional
+    reportEvery = cms.int32(1000),                          ## optional
     lumisToProcess = CfgTypes.untracked(CfgTypes.VLuminosityBlockRange(lumilist)),
 )
 
@@ -111,8 +111,11 @@ process.analyzer = cms.PSet(
 
 process.handler = cms.PSet(
     # L1
-    l1ETMs = cms.string(""),
-    l1Jets = cms.string(""),
+    l1METs = cms.string("hltL1extraParticles", "MET"),
+    l1MHTs = cms.string("hltL1extraParticles", "MHT"),
+    l1CentralJets = cms.string("hltL1extraParticles", "Central"),
+    l1ForwardJets = cms.string("hltL1extraParticles", "Forward"),
+    l1TauJets = cms.string("hltL1extraParticles", "Tau"),
     # HLT
     hltCaloJets = cms.string("hltAntiKT5CaloJets"),
     #hltCaloJets = cms.string("hltAntiKT5CaloJetsPF"),
@@ -150,8 +153,8 @@ process.handler = cms.PSet(
     # PAT
     patElectrons = cms.string("selectedPatElectronsPFlow"),
     patJets = cms.string("selectedPatJetsPFlow"),
-    patMETs = cms.string("patMETsPFlow"),
-    patMETTypeIs = cms.string(""),
+    patMETs = cms.string("patPFMetPFlow"),
+    patMETTypeIs = cms.string("patMETsPFlow"),
     patMuons = cms.string("selectedPatMuonsPFlow"),
     patPhotons = cms.string(""),
     patTaus = cms.string(""),

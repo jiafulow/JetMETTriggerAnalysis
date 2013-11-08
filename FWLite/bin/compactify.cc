@@ -64,7 +64,7 @@ void simple_fill(const T& cand, simple::Particle& simple) {
 template<typename T>
 void simple_fill(const T& cand, bool jetID, simple::Jet& simple) {
     const pat::Jet* patJet = dynamic_cast<const pat::Jet*>(&cand);
-    
+
     simple.px     = cand.p4().px();
     simple.py     = cand.p4().py();
     simple.pz     = cand.p4().pz();
@@ -96,8 +96,8 @@ void simple_fill(const T& cand, simple::MET& simple) {
     return;
 }
 
-void simple_fill(const edm::EventBase& iEvent, unsigned int nPV, 
-                 unsigned int nGoodPV, unsigned int nTruePV, bool json, 
+void simple_fill(const edm::EventBase& iEvent, unsigned int nPV,
+                 unsigned int nGoodPV, unsigned int nTruePV, bool json,
                  simple::Event& simple) {
     simple.run    = iEvent.id().run();
     simple.lumi   = iEvent.id().luminosityBlock();
@@ -167,7 +167,7 @@ int main(int argc, char *argv[]) {
     gSystem->Load("libFWCoreFWLite");
     AutoLibraryLoader::enable();
     //gSystem->Load("libDataFormatsFWLite");
-    
+
     // Generate libraries
     //gInterpreter->GenerateDictionary("simple::MET", "JetMETTriggerAnalysis/FWLite/interface/simple::Candidate.h");
 
@@ -188,7 +188,7 @@ int main(int argc, char *argv[]) {
     const int runMin = inputpset.getParameter<int>("runMin");
     const int runMax = inputpset.getParameter<int>("runMax");
     const int skipEvents = inputpset.getParameter<int>("skipEvents");
-    //const int reportEvery = inputpset.getParameter<int>("reportEvery");
+    const int reportEvery = inputpset.getParameter<int>("reportEvery");
     std::vector<edm::LuminosityBlockRange> lumisToProcess;
     if (inputpset.exists("lumisToProcess") ) {
         const std::vector<edm::LuminosityBlockRange>& lumisTemp =
@@ -196,10 +196,10 @@ int main(int argc, char *argv[]) {
         lumisToProcess.resize( lumisTemp.size() );
         copy(lumisTemp.begin(), lumisTemp.end(), lumisToProcess.begin() );
     }
-    
+
     // Read from output pset
     const std::string outfilename = outputpset.getParameter<std::string>("fileName");
-    
+
     // Read from analyzer pset
     const std::vector<std::string>& triggers = analyzerpset.getParameter<std::vector<std::string> >("triggers");
     const std::vector<std::string>& metfilters = analyzerpset.getParameter<std::vector<std::string> >("metfilters");
@@ -217,11 +217,11 @@ int main(int argc, char *argv[]) {
     const bool verbose = analyzerpset.getParameter<bool>("verbose");
     HLTJetIDHelper hltJetIDHelper(hltJetIDParams);
     JetIDHelper jetIDHelper(jetIDParams);
-    
+
     // Read from handler pset
     Handler handler(handlerpset, isData);
-    
-    
+
+
     //__________________________________________________________________________
     // Prepare output tree
     simple::Event simpleEvent;
@@ -243,8 +243,8 @@ int main(int argc, char *argv[]) {
     std::vector<simple::PFJet> patJets;
     simple::MET patMET;
     double recoRho_kt6CaloJets, recoRho_kt6PFJets;
-    
-    
+
+
     TFile* outfile = new TFile(outfilename.c_str(), "RECREATE");
     TTree* outtree = new TTree("Events", "Events");
     outtree->Branch("event", &simpleEvent);
@@ -270,8 +270,8 @@ int main(int argc, char *argv[]) {
     outtree->Branch("patMET", &patMET);
     outtree->Branch("recoRho_kt6CaloJets", &recoRho_kt6CaloJets);
     outtree->Branch("recoRho_kt6PFJets", &recoRho_kt6PFJets);
-    
-    
+
+
     //__________________________________________________________________________
     // Loop over events
     fwlite::ChainEvent ev(infilenames);
@@ -281,16 +281,16 @@ int main(int argc, char *argv[]) {
     for(ev.toBegin(); !ev.atEnd(); ++ev, ++ievent) {
         // Skip events
         if (ievent < skipEvents)  continue;
-        if (runMin > 0 && (int)ev.id().run() < runMin)  continue; 
+        if (runMin > 0 && (int)ev.id().run() < runMin)  continue;
         if (runMax > 0 && (int)ev.id().run() > runMax)  continue;
         // Stop event loop
         if (maxEvents > 0 && (ievent >= (maxEvents + skipEvents)) )  break;
-        
-        if (verbose)  std::cout << "=== iEvent " << ievent << ", jEvent " << jevent << " ===" << std::endl;
+        if (ievent % reportEvery == 0)  std::cout << "--- ... Processing event: " << ievent << std::endl;
+
         const edm::EventBase& eventbase = ev;
         handler.get(eventbase);
-        
-        
+
+
         //______________________________________________________________________
         // Event info
         if (verbose)  std::cout << "compactify: Begin filling event info..." << std::endl;
@@ -301,8 +301,8 @@ int main(int argc, char *argv[]) {
         unsigned int nTruePV = (isData ? 999 : handler.simPileupInfo->front().getTrueNumInteractions());
         simple_fill(ev, nPV, nGoodPV, nTruePV, goodjson, simpleEvent);
         weightGenEvent = (isData ? 1.0 : handler.genEventInfo->weight());
-        
-        
+
+
         //______________________________________________________________________
         // Trigger results
         if (verbose)  std::cout << "compactify: Begin filling trigger results..." << std::endl;
@@ -316,7 +316,7 @@ int main(int argc, char *argv[]) {
             if (accept)  triggerFlagsOR = true;
         }
         triggerFlags[triggers.size()] = triggerFlagsOR;
-        
+
         //______________________________________________________________________
         // MET filter results
         if (verbose)  std::cout << "compactify: Begin filling MET filter results..." << std::endl;
@@ -328,7 +328,7 @@ int main(int argc, char *argv[]) {
             if (!accept)  metfilterFlagsAND = false;
         }
         metfilterFlags[metfilters.size()] = metfilterFlagsAND;
-        
+
         //______________________________________________________________________
         // hltPFCandidates
         if (verbose)  std::cout << "compactify: Begin filling hltPFCandidates..." << std::endl;
@@ -341,7 +341,7 @@ int main(int argc, char *argv[]) {
             simple_fill(cand, isPU, simple);
             hltPFCandidates.push_back(simple);
         }
-        
+
         //______________________________________________________________________
         // hltCaloJets
         if (verbose)  std::cout << "compactify: Begin filling hltCaloJets..." << std::endl;
@@ -360,7 +360,7 @@ int main(int argc, char *argv[]) {
             simple_fill(jet, jetID, simple);
             hltCaloJets.push_back(simple);
         }
-        
+
         //______________________________________________________________________
         // hltPFJets
         if (verbose)  std::cout << "compactify: Begin filling hltPFJets..." << std::endl;
@@ -372,38 +372,38 @@ int main(int argc, char *argv[]) {
             simple_fill(jet, jetID, simple);
             hltPFJets.push_back(simple);
         }
-        
+
         //______________________________________________________________________
         // hltCaloMET
         if (verbose)  std::cout << "compactify: Begin filling hltCaloMET..." << std::endl;
         simple_fill(handler.hltCaloMETs->at(0), hltCaloMET);
-        
+
         //______________________________________________________________________
         // hltCaloMETClean
         if (verbose)  std::cout << "compactify: Begin filling hltCaloMETClean..." << std::endl;
         simple_fill(handler.hltCaloMETCleans->at(0), hltCaloMETClean);
-        
+
         //______________________________________________________________________
         // hltCaloMETJetIDClean
         if (verbose)  std::cout << "compactify: Begin filling hltCaloMETJetIDClean..." << std::endl;
         simple_fill(handler.hltCaloMETJetIDCleans->at(0), hltCaloMETJetIDClean);
-        
+
         //______________________________________________________________________
         // hltPFMET
         if (verbose)  std::cout << "compactify: Begin filling hltPFMET..." << std::endl;
         simple_fill(handler.hltPFMETs->at(0), hltPFMET);
-        
+
         //______________________________________________________________________
         // hltTrackMET
         if (verbose)  std::cout << "compactify: Begin filling hltTrackMET..." << std::endl;
         simple_fill(handler.hltTrackMETs->at(0), hltTrackMET);
-        
+
         //______________________________________________________________________
         // hltRhos
         if (verbose)  std::cout << "compactify: Begin filling hltRhos..." << std::endl;
         hltRho_kt6CaloJets = *(handler.hltRho_kt6CaloJets);
         hltRho_kt6PFJets = *(handler.hltRho_kt6PFJets);
-        
+
         //______________________________________________________________________
         // recoPFCandidates
         if (verbose)  std::cout << "compactify: Begin filling recoPFCandidates..." << std::endl;
@@ -416,7 +416,7 @@ int main(int argc, char *argv[]) {
             simple_fill(cand, isPU, simple);
             recoPFCandidates.push_back(simple);
         }
-        
+
         //______________________________________________________________________
         // patJets
         if (verbose)  std::cout << "compactify: Begin filling patJets..." << std::endl;
@@ -428,34 +428,34 @@ int main(int argc, char *argv[]) {
             simple_fill(jet, jetID, simple);
             patJets.push_back(simple);
         }
-        
+
         //______________________________________________________________________
         // patMET
         if (verbose)  std::cout << "compactify: Begin filling patMET..." << std::endl;
         simple_fill(handler.patMETs->at(0), patMET);
-        
+
         //______________________________________________________________________
         // patTrackMET
         // ???
-        
+
         //______________________________________________________________________
         // recoRhos
         if (verbose)  std::cout << "compactify: Begin filling recoRhos..." << std::endl;
         recoRho_kt6CaloJets = *(handler.recoRho_kt6CaloJets);
         recoRho_kt6PFJets = *(handler.recoRho_kt6PFJets);
-        
+
         //______________________________________________________________________
         // Fill
         outtree->Fill();
         ++jevent;
     }
-    
+
     outfile->cd();
     outtree->Write();
     outfile->Close();
-    
+
     std::cout << ">>> number of events: " << jevent << "/" << ievent << std::endl;
-    
+
     return 0;
 }
 
