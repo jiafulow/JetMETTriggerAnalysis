@@ -29,6 +29,15 @@
 //______________________________________________________________________________
 // Fill
 template<typename T>
+void simple_fill(const T& cand, simple::XYVector& simple) {
+    simple.px     = cand.p4().px();
+    simple.py     = cand.p4().py();
+    simple.pt     = cand.p4().pt();
+    simple.phi    = cand.p4().phi();
+    return;
+}
+
+template<typename T>
 void simple_fill(const T& cand, simple::LorentzVector& simple) {
     simple.px     = cand.p4().px();
     simple.py     = cand.p4().py();
@@ -84,13 +93,51 @@ void simple_fill(const T& cand, simple::Jet& simple) {
 }
 
 template<typename T>
-void simple_fill(const T& cand, simple::MET& simple) {
+void simple_fill(const T& cand, bool jetID, const reco::JetID& clsJetID, simple::CaloJet& simple) {
+    const pat::Jet* patJet = dynamic_cast<const pat::Jet*>(&cand);
+
     simple.px     = cand.p4().px();
     simple.py     = cand.p4().py();
     simple.pz     = cand.p4().pz();
     simple.E      = cand.p4().E();
     simple.pt     = cand.p4().pt();
     simple.eta    = cand.p4().eta();
+    simple.phi    = cand.p4().phi();
+    simple.rawpt  = (patJet != 0 ? patJet->correctedP4(0).pt() : -999);
+    simple.jetID  = jetID;
+    simple.emf    = cand.emEnergyFraction();
+    simple.fHPD   = clsJetID.fHPD;
+    simple.n90Hits= clsJetID.n90Hits;
+    return;
+}
+
+template<typename T>
+void simple_fill(const T& cand, bool jetID, simple::PFJet& simple) {
+    const pat::Jet* patJet = dynamic_cast<const pat::Jet*>(&cand);
+
+    simple.px     = cand.p4().px();
+    simple.py     = cand.p4().py();
+    simple.pz     = cand.p4().pz();
+    simple.E      = cand.p4().E();
+    simple.pt     = cand.p4().pt();
+    simple.eta    = cand.p4().eta();
+    simple.phi    = cand.p4().phi();
+    simple.rawpt  = (patJet != 0 ? patJet->correctedP4(0).pt() : -999);
+    simple.jetID  = jetID;
+    simple.chf    = cand.chargedHadronEnergyFraction();
+    simple.nhf    = cand.neutralHadronEnergyFraction() + cand.HFHadronEnergyFraction();
+    simple.cef    = cand.chargedEmEnergyFraction();
+    simple.nef    = cand.neutralEmEnergyFraction();
+    simple.nch    = cand.chargedMultiplicity();
+    simple.ntot   = cand.numberOfDaughters();
+    return;
+}
+
+template<typename T>
+void simple_fill(const T& cand, simple::MET& simple) {
+    simple.px     = cand.p4().px();
+    simple.py     = cand.p4().py();
+    simple.pt     = cand.p4().pt();
     simple.phi    = cand.p4().phi();
     simple.sumEt  = cand.sumEt();
     return;
@@ -172,18 +219,23 @@ int main(int argc, char *argv[]) {
     //gInterpreter->GenerateDictionary("simple::MET", "JetMETTriggerAnalysis/FWLite/interface/simple::Candidate.h");
 
     // Load config file
-    std::string cfgfilename = "compactify_cfg.py";
-    if (argc >= 2) {
-        cfgfilename = argv[1];
+    if (argc < 2) {
+        std::cout << "Usage: " << argv[0] << " [parameters.py]" << std::endl;
+        return 0;
     }
-    PythonProcessDesc builder(cfgfilename.c_str());
-    const edm::ParameterSet& inputpset    = builder.processDesc()->getProcessPSet()->getParameter<edm::ParameterSet>("input");
-    const edm::ParameterSet& outputpset   = builder.processDesc()->getProcessPSet()->getParameter<edm::ParameterSet>("output");
-    const edm::ParameterSet& analyzerpset = builder.processDesc()->getProcessPSet()->getParameter<edm::ParameterSet>("analyzer");
-    const edm::ParameterSet& handlerpset  = builder.processDesc()->getProcessPSet()->getParameter<edm::ParameterSet>("handler");
+    PythonProcessDesc builder(argv[1], argc, argv);
+    std::cout << "Read config: " << argv[1] << std::endl;
+
+    const edm::ParameterSet cfg = *builder.parameterSet();
+    const edm::ParameterSet& inputpset    = cfg.getParameter<edm::ParameterSet>("input");
+    const edm::ParameterSet& outputpset   = cfg.getParameter<edm::ParameterSet>("output");
+    const edm::ParameterSet& analyzerpset = cfg.getParameter<edm::ParameterSet>("analyzer");
+    const edm::ParameterSet& handlerpset  = cfg.getParameter<edm::ParameterSet>("handler");
 
     // Read from input pset
-    const std::vector<std::string>& infilenames = inputpset.getParameter<std::vector<std::string> >("fileNames");
+    const std::vector<std::string>& infilenames_all = inputpset.getParameter<std::vector<std::string> >("fileNames");
+    const int njobs = inputpset.getParameter<int>("njobs");
+    const int jobid = inputpset.getParameter<int>("jobid");
     const int maxEvents = inputpset.getParameter<int>("maxEvents");
     const int runMin = inputpset.getParameter<int>("runMin");
     const int runMax = inputpset.getParameter<int>("runMax");
@@ -196,13 +248,26 @@ int main(int argc, char *argv[]) {
         lumisToProcess.resize( lumisTemp.size() );
         copy(lumisTemp.begin(), lumisTemp.end(), lumisToProcess.begin() );
     }
+    int ibeginjob = 0;
+    int iendjob = infilenames_all.size();
+    if (njobs != 1) {
+        ibeginjob = jobid * (infilenames_all.size() / njobs);
+        iendjob = (jobid+1) * (infilenames_all.size() / njobs);
+        if (jobid == njobs - 1)  iendjob = infilenames_all.size();
+    }
+    const std::vector<std::string> infilenames(infilenames_all.begin()+ibeginjob,
+                                               infilenames_all.begin()+iendjob);
 
     // Read from output pset
-    const std::string outfilename = outputpset.getParameter<std::string>("fileName");
+    TString outfilename = outputpset.getParameter<std::string>("fileName");
+    if (njobs != 1) {
+        outfilename.ReplaceAll(".root", Form("_%i.root", jobid));
+    }
 
     // Read from analyzer pset
     const std::vector<std::string>& triggers = analyzerpset.getParameter<std::vector<std::string> >("triggers");
     const std::vector<std::string>& metfilters = analyzerpset.getParameter<std::vector<std::string> >("metfilters");
+    const std::vector<std::string>& optmetfilters = analyzerpset.getParameter<std::vector<std::string> >("optmetfilters");
     const edm::ParameterSet& hltJetIDParams = analyzerpset.getParameter<edm::ParameterSet>("hltJetID");
     const edm::ParameterSet& jetIDParams = analyzerpset.getParameter<edm::ParameterSet>("jetID");
     //const double pfjetPtMin = analyzerpset.getParameter<double>("pfjetPtMin");
@@ -228,6 +293,7 @@ int main(int argc, char *argv[]) {
     float weightGenEvent, weightPU, weightPdf;
     bool triggerFlags[99]; int nTriggerFlags = triggers.size() + 1;  // last one is "OR" combination
     bool metfilterFlags[99]; int nMetfilterFlags = metfilters.size() + 1;  // last one is "AND" combination
+    bool optmetfilterFlags[99]; int nOptmetfilterFlags = optmetfilters.size() + 1;  // last one is "AND" combination
     // HLT
     std::vector<simple::Particle> hltPFCandidates;
     std::vector<simple::CaloJet> hltCaloJets;
@@ -241,11 +307,17 @@ int main(int argc, char *argv[]) {
     // non-HLT
     std::vector<simple::Particle> recoPFCandidates;
     std::vector<simple::PFJet> patJets;
+    simple::MET recoPFMET;
+    simple::MET recoPFMETT1;
+    simple::MET recoPFMETT0T1;
+    simple::MET recoPFMETMVA;
+    simple::MET recoPFMETNoPU;
     simple::MET patMET;
+    simple::MET patMPT;
     double recoRho_kt6CaloJets, recoRho_kt6PFJets;
 
 
-    TFile* outfile = new TFile(outfilename.c_str(), "RECREATE");
+    TFile* outfile = new TFile(outfilename, "RECREATE");
     TTree* outtree = new TTree("Events", "Events");
     outtree->Branch("event", &simpleEvent);
     outtree->Branch("weightGenEvent", &weightGenEvent);
@@ -253,6 +325,7 @@ int main(int argc, char *argv[]) {
     outtree->Branch("weightPdf", &weightPdf);  //FIXME not yet set
     outtree->Branch("triggerFlags", triggerFlags, Form("triggerFlags[%i]/b", nTriggerFlags));
     outtree->Branch("metfilterFlags", metfilterFlags, Form("metfilterFlags[%i]/b", nMetfilterFlags));
+    outtree->Branch("optmetfilterFlags", optmetfilterFlags, Form("optmetfilterFlags[%i]/b", nOptmetfilterFlags));
     // HLT
     outtree->Branch("hltPFCandidates", &hltPFCandidates);
     outtree->Branch("hltCaloJets", &hltCaloJets);
@@ -267,17 +340,29 @@ int main(int argc, char *argv[]) {
     // non-HLT
     outtree->Branch("recoPFCandidates", &recoPFCandidates);
     outtree->Branch("patJets", &patJets);
+    outtree->Branch("recoPFMET", &recoPFMET);
+    outtree->Branch("recoPFMETT1", &recoPFMETT1);
+    outtree->Branch("recoPFMETT0T1", &recoPFMETT0T1);
+    outtree->Branch("recoPFMETMVA", &recoPFMETMVA);
+    outtree->Branch("recoPFMETNoPU", &recoPFMETNoPU);
     outtree->Branch("patMET", &patMET);
+    outtree->Branch("patMPT", &patMPT);
     outtree->Branch("recoRho_kt6CaloJets", &recoRho_kt6CaloJets);
     outtree->Branch("recoRho_kt6PFJets", &recoRho_kt6PFJets);
 
 
     //__________________________________________________________________________
     // Loop over events
+    std::cout << "<<< number of input files: " << infilenames.size() << std::endl;
+    bool verboseInput = true;
+    if (verbose || verboseInput) {
+        for (unsigned int i = 0; i < infilenames.size(); ++i) {
+            std::cout << "    --- " << infilenames.at(i) << std::endl;
+        }
+    }
     fwlite::ChainEvent ev(infilenames);
     int ievent = 0;
     int jevent = 0;
-    std::cout << "<<< number of input files: " << infilenames.size() << std::endl;
     for(ev.toBegin(); !ev.atEnd(); ++ev, ++ievent) {
         // Skip events
         if (ievent < skipEvents)  continue;
@@ -329,6 +414,14 @@ int main(int argc, char *argv[]) {
         }
         metfilterFlags[metfilters.size()] = metfilterFlagsAND;
 
+        bool optmetfilterFlagsAND = true;
+        for (unsigned int i = 0; i < optmetfilters.size(); ++i) {
+            bool accept = resultsByNamePAT.accept(optmetfilters.at(i));
+            optmetfilterFlags[i] = accept;
+            if (!accept)  optmetfilterFlagsAND = false;
+        }
+        optmetfilterFlags[optmetfilters.size()] = optmetfilterFlagsAND;
+
         //______________________________________________________________________
         // hltPFCandidates
         if (verbose)  std::cout << "compactify: Begin filling hltPFCandidates..." << std::endl;
@@ -354,10 +447,10 @@ int main(int argc, char *argv[]) {
             //const reco::JetID jetID_ = (*handler.hltCaloJetIDs)[jetref];
             assert(handler.hltCaloJetIDs->idSize() == 1);
             edm::ProductID productid = handler.hltCaloJetIDs->ids().front().first;
-            const reco::JetID jetID_ = handler.hltCaloJetIDs->get(productid, i);
+            const reco::JetID clsJetID = handler.hltCaloJetIDs->get(productid, i);
             simple::CaloJet simple;
-            bool jetID = hltJetIDHelper(jet, jetID_);
-            simple_fill(jet, jetID, simple);
+            bool jetID = hltJetIDHelper(jet, clsJetID);
+            simple_fill(jet, jetID, clsJetID, simple);
             hltCaloJets.push_back(simple);
         }
 
@@ -430,13 +523,34 @@ int main(int argc, char *argv[]) {
         }
 
         //______________________________________________________________________
+        // recoPFMET
+        if (verbose)  std::cout << "compactify: Begin filling recoPFMET..." << std::endl;
+        simple_fill(handler.recoPFMETs->at(0), recoPFMET);
+        simple_fill(handler.recoPFMETT1s->at(0), recoPFMETT1);
+        simple_fill(handler.recoPFMETT0T1s->at(0), recoPFMETT0T1);
+        simple_fill(handler.recoPFMETMVAs->at(0), recoPFMETMVA);
+        simple_fill(handler.recoPFMETNoPUs->at(0), recoPFMETNoPU);
+
+        //______________________________________________________________________
         // patMET
         if (verbose)  std::cout << "compactify: Begin filling patMET..." << std::endl;
         simple_fill(handler.patMETs->at(0), patMET);
 
-        //______________________________________________________________________
-        // patTrackMET
-        // ???
+        reco::PFCandidate::LorentzVector patMPT_p4(0,0,0,0);
+        double patMPT_sumEt = 0.;
+        for (unsigned int i = 0; i < handler.recoPFCandidates->size(); ++i) {
+            const reco::PFCandidate& cand = handler.recoPFCandidates->at(i);
+            const bool& isPU = handler.patPFPileUpFlags->at(i);
+            if (!isPU && cand.charge() != 0) {
+                patMPT_p4 -= cand.p4();
+                patMPT_sumEt += cand.pt();
+            }
+        }
+        patMPT.px     = patMPT_p4.px();
+        patMPT.py     = patMPT_p4.py();
+        patMPT.pt     = patMPT_p4.pt();
+        patMPT.phi    = patMPT_p4.phi();
+        patMPT.sumEt  = patMPT_sumEt;
 
         //______________________________________________________________________
         // recoRhos

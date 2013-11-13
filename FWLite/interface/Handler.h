@@ -41,6 +41,7 @@
 #include "DataFormats/PatCandidates/interface/Tau.h"
 // Trigger results
 #include "DataFormats/Common/interface/TriggerResults.h"
+#include "DataFormats/HLTReco/interface/TriggerEvent.h"
 // GEN
 #include "DataFormats/HepMCCandidate/interface/GenParticle.h"
 #include "SimDataFormats/GeneratorProducts/interface/GenEventInfoProduct.h"
@@ -74,8 +75,8 @@ class Handler {
     void get(const edm::EventBase& iEvent) {
         getByLabel(iEvent, "l1METs", l1METs);
         getByLabel(iEvent, "l1MHTs", l1MHTs);
-        getByLabel(iEvent, "l1CentralJets", l1CentralJets);
-        getByLabel(iEvent, "l1ForwardJets", l1ForwardJets);
+        getByLabel(iEvent, "l1CenJets", l1CenJets);
+        getByLabel(iEvent, "l1ForJets", l1ForJets);
         getByLabel(iEvent, "l1TauJets", l1TauJets);
         getByLabel(iEvent, "hltCaloJets", hltCaloJets);
         getByLabel(iEvent, "hltCaloJetIDPasseds", hltCaloJetIDPasseds);
@@ -102,6 +103,10 @@ class Handler {
         getByLabel(iEvent, "recoPFCandidates", recoPFCandidates);
         getByLabel(iEvent, "recoPFJets", recoPFJets);
         getByLabel(iEvent, "recoPFMETs", recoPFMETs);
+        getByLabel(iEvent, "recoPFMETT1s", recoPFMETT1s);
+        getByLabel(iEvent, "recoPFMETT0T1s", recoPFMETT0T1s);
+        getByLabel(iEvent, "recoPFMETMVAs", recoPFMETMVAs);
+        getByLabel(iEvent, "recoPFMETNoPUs", recoPFMETNoPUs);
         getByLabel(iEvent, "recoVertices", recoVertices);
         getByLabel(iEvent, "recoGoodVertices", recoGoodVertices);
         getByLabel(iEvent, "recoRho_kt6CaloJets", recoRho_kt6CaloJets);
@@ -109,11 +114,11 @@ class Handler {
         getByLabel(iEvent, "patElectrons", patElectrons);
         getByLabel(iEvent, "patJets", patJets);
         getByLabel(iEvent, "patMETs", patMETs);
-        getByLabel(iEvent, "patMETTypeIs", patMETTypeIs);
         getByLabel(iEvent, "patMuons", patMuons);
         getByLabel(iEvent, "patPhotons", patPhotons);
         getByLabel(iEvent, "patTaus", patTaus);
         getByLabel(iEvent, "triggerResults", triggerResults);
+        getByLabel(iEvent, "triggerEvent", triggerEvent);
         if (!isData_) {
             getByLabel(iEvent, "genJets", genJets);
             getByLabel(iEvent, "genMETs", genMETs);
@@ -129,8 +134,8 @@ class Handler {
     // L1
     edm::Handle<std::vector<l1extra::L1EtMissParticle> > l1METs;
     edm::Handle<std::vector<l1extra::L1EtMissParticle> > l1MHTs;
-    edm::Handle<std::vector<l1extra::L1JetParticle   > > l1CentralJets;
-    edm::Handle<std::vector<l1extra::L1JetParticle   > > l1ForwardJets;
+    edm::Handle<std::vector<l1extra::L1JetParticle   > > l1CenJets;
+    edm::Handle<std::vector<l1extra::L1JetParticle   > > l1ForJets;
     edm::Handle<std::vector<l1extra::L1JetParticle   > > l1TauJets;
 
     // HLT
@@ -161,6 +166,10 @@ class Handler {
     edm::Handle<std::vector<reco::PFCandidate  > > recoPFCandidates;
     edm::Handle<std::vector<reco::PFJet        > > recoPFJets;
     edm::Handle<std::vector<reco::PFMET        > > recoPFMETs;
+    edm::Handle<std::vector<reco::PFMET        > > recoPFMETT1s;
+    edm::Handle<std::vector<reco::PFMET        > > recoPFMETT0T1s;
+    edm::Handle<std::vector<reco::PFMET        > > recoPFMETMVAs;
+    edm::Handle<std::vector<reco::PFMET        > > recoPFMETNoPUs;
     edm::Handle<std::vector<reco::Vertex       > > recoVertices;
     edm::Handle<std::vector<reco::Vertex       > > recoGoodVertices;
     edm::Handle<double                           > recoRho_kt6CaloJets;
@@ -170,13 +179,13 @@ class Handler {
     edm::Handle<std::vector<pat::Electron      > > patElectrons;
     edm::Handle<std::vector<pat::Jet           > > patJets;
     edm::Handle<std::vector<pat::MET           > > patMETs;
-    edm::Handle<std::vector<pat::MET           > > patMETTypeIs;
     edm::Handle<std::vector<pat::Muon          > > patMuons;
     edm::Handle<std::vector<pat::Photon        > > patPhotons;
     edm::Handle<std::vector<pat::Tau           > > patTaus;
 
     // Trigger results
     edm::Handle<edm::TriggerResults              > triggerResults;
+    edm::Handle<trigger::TriggerEvent            > triggerEvent;
 
     // GEN/SIM
     edm::Handle<std::vector<reco::GenJet       > > genJets;
@@ -196,3 +205,4 @@ class Handler {
 };
 
 #endif  // HANDLER_H_
+

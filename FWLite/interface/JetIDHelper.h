@@ -117,5 +117,5 @@ bool HLTJetIDHelper::operator()(const reco::PFJet& pfJet) {
     return accept;
 }
     
-
 #endif  // JETIDHELPER_H_
+

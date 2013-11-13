@@ -2,6 +2,8 @@
 
 #ifdef __CINT__
 
+#pragma link C++ class simple::XYVector+;
+#pragma link C++ class std::vector<simple::XYVector>+;
 #pragma link C++ class simple::LorentzVector+;
 #pragma link C++ class std::vector<simple::LorentzVector>+;
 #pragma link C++ class simple::Particle+;

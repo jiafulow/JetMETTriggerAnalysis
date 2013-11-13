@@ -9,6 +9,12 @@
 //}
 
 namespace simple {
+    class XYVector {
+      public:
+        float px, py;
+        float pt, phi;  // trade memory for simplicity
+    };
+
     class LorentzVector {
       public:
         float px, py, pz, E;
@@ -34,8 +40,8 @@ namespace simple {
     class CaloJet : public Jet {
       public:
         float emf;
-        float fhf;
-        int nHit;
+        float fHPD;
+        int n90Hits;
         //float etaWidth;
         //float phiWidth;
     };
@@ -48,11 +54,12 @@ namespace simple {
         float cef;
         float nef;
         int nch;
-        int nconstituents;  
+        int ntot;
     };
     
     // refer DataFormats/METReco/interface/MET.h
-    class MET : public LorentzVector {
+    class MET : public XYVector {
+    //class MET : public LorentzVector {
       public:
         float sumEt;
     };
@@ -71,3 +78,4 @@ namespace simple {
 }
 
 #endif  // SIMPLECANDIDATE_H_
+
