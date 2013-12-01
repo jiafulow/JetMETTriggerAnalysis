@@ -62,7 +62,8 @@ if True:
     #dirname = "/eos/uscms/store/user/jiafu/METTriggers/skimHLTPFMET150_eos_20130909/TT_CT10_TuneZ2star_8TeV-powheg-tauola-PU25bx50_2/"
     #dirname = "/pnfs/cms/WAX/resilient/jiafulow/METTriggers/skimHLTPFMET150_20130909/MET2012D/"
     #dirname = "/pnfs/cms/WAX/resilient/jiafulow/METTriggers/skimHLTL1ETM40_20131007/MET-Run2012D-PromptReco-v1/"
-    dirname = "/eos/uscms/store/user/jiafu/METTriggers/skimHLTPFMETplusX_20131104/MET-Run2012D-PromptReco-v1/"
+    #dirname = "/eos/uscms/store/user/jiafu/METTriggers/skimHLTPFMETplusX_20131104/MET-Run2012D-PromptReco-v1/"
+    dirname = "/eos/uscms/store/user/jiafu/METTriggers/openHLT2PAT_20131128/MET-Run2012D-skimHLTL1ETM40/"
     if not dirname.endswith("/"):  dirname += "/"
     basenamelist = sorted(os.listdir(dirname))
     if dirname.startswith("/pnfs/cms/"):
@@ -70,8 +71,8 @@ if True:
     if dirname.startswith("/eos/uscms"):  # some files have size = 0
         basenamelist = [basename for basename in basenamelist if os.path.getsize(dirname + basename) > 1000]
     process.input.fileNames = cms.vstring()
-    #process.input.fileNames.extend([dirname + basename for basename in basenamelist[1:2]])
-    process.input.fileNames.extend([dirname + basename for basename in basenamelist])
+    process.input.fileNames.extend([dirname + basename for basename in basenamelist[1:2]])
+    #process.input.fileNames.extend([dirname + basename for basename in basenamelist])
 
 
 process.output = cms.PSet(
@@ -118,27 +119,35 @@ process.analyzer = cms.PSet(
         ),
     ),
     triggers = cms.vstring(
-        "HLT_MonoCentralPFJet80_PFMETnoMu105_NHEF0p95_v4",
-        "HLT_DiPFJet40_PFMETnoMu65_MJJ800VBF_AllJets_v9",
-        "HLT_DiPFJet40_PFMETnoMu65_MJJ600VBF_LeadingJets_v9",
-        "HLT_PFMET150_v7",
-        "HLT_DiCentralJetSumpT100_dPhi05_DiCentralPFJet60_25_PFMET100_HBHENoiseCleaned_v5",
-        "HLT_DiCentralPFJet30_PFMET80_v6",
-        "HLT_DiCentralPFJet30_PFMET80_BTagCSV07_v5",
-        "HLT_DiCentralPFNoPUJet50_PFMETORPFMETNoMu80_v4",
-        "HLT_PFNoPUHT350_PFMET100_v4",
-        "HLT_PFNoPUHT400_PFMET100_v4",
-        "HLT_MET120_v13",
-        "HLT_MET120_HBHENoiseCleaned_v6",
-        "HLT_MET200_v12",
-        "HLT_MET200_HBHENoiseCleaned_v5",
-        "HLT_MET300_HBHENoiseCleaned_v5",
-        "HLT_MET400_v7",
-        "HLT_MET400_HBHENoiseCleaned_v5",
-        "HLT_L1ETM30_v2",
-        "HLT_L1ETM40_v2",
-        "HLT_L1ETM70_v2",
-        "HLT_L1ETM100_v2",
+        # MET
+        'HLT_DiCentralJetSumpT100_dPhi05_DiCentralPFJet60_25_PFMET100_HBHENoiseCleaned_v5',
+        'HLT_DiCentralPFJet30_PFMET80_BTagCSV07_v5',
+        'HLT_DiCentralPFJet30_PFMET80_v6',
+        'HLT_DiCentralPFNoPUJet50_PFMETORPFMETNoMu80_v4',
+        'HLT_DiPFJet40_PFMETnoMu65_MJJ600VBF_LeadingJets_v9',
+        'HLT_DiPFJet40_PFMETnoMu65_MJJ800VBF_AllJets_v9',
+        'HLT_L1ETM100_v2',
+        'HLT_L1ETM30_v2',
+        'HLT_L1ETM40_v2',
+        'HLT_L1ETM70_v2',
+        'HLT_MET120_HBHENoiseCleaned_v6',
+        'HLT_MET120_v13',
+        'HLT_MET200_HBHENoiseCleaned_v5',
+        'HLT_MET200_v12',
+        'HLT_MET300_HBHENoiseCleaned_v5',
+        'HLT_MET300_v4',
+        'HLT_MET400_HBHENoiseCleaned_v5',
+        'HLT_MET400_v7',
+        'HLT_MonoCentralPFJet80_PFMETnoMu105_NHEF0p95_v4',
+        'HLT_PFMET150_v7',
+        'HLT_PFMET180_v7',
+        # HTMHT
+        'HLT_PFNoPUHT350_PFMET100_v4',
+        'HLT_PFNoPUHT400_PFMET100_v4',
+        # JetHT
+        'HLT_MET80_Track50_dEdx3p6_v6',
+        'HLT_MET80_Track60_dEdx3p7_v6',
+        'HLT_MET80_v5',
     ),
     metfilters = cms.vstring(
         "p_HBHENoiseFilter",
@@ -176,6 +185,10 @@ process.handler = cms.PSet(
     l1CenJets = cms.string("hltL1extraParticles:Central"),
     l1ForJets = cms.string("hltL1extraParticles:Forward"),
     l1TauJets = cms.string("hltL1extraParticles:Tau"),
+    l1NoIsoEGs = cms.string("hltL1extraParticles:NonIsolated"),
+    l1IsoEGs = cms.string("hltL1extraParticles:Isolated"),
+    l1Mus = cms.string("hltL1extraParticles"),
+    l1HFRings = cms.string("hltL1extraParticles"),
     # HLT
     hltCaloJets = cms.string("hltAntiKT5CaloJets"),
     #hltCaloJets = cms.string("hltAntiKT5CaloJetsPF"),
@@ -184,7 +197,7 @@ process.handler = cms.PSet(
     hltCaloJetL1Fasts = cms.string("hltCaloJetL1FastJetCorrected"),
     hltCaloMETs = cms.string("hltMet"),
     hltCaloMETCleans = cms.string("hltMetClean"),
-    hltCaloMETJetIDCleans = cms.string("hltMetJetIDClean"),
+    hltCaloMETJetIDCleans = cms.string("hltMetCleanUsingJetID"),
     hltPFMETs = cms.string("hltPFMETProducer"),
     hltPFMETNoMus = cms.string("hltPFMETnoMu"),
     hltTrackMETs = cms.string("hltTrackMetProducer"),
@@ -209,8 +222,8 @@ process.handler = cms.PSet(
     recoPFMETT0T1s = cms.string("pfMetT0pcT1"),
     recoPFMETMVAs = cms.string("pfMEtMVA"),
     recoPFMETNoPUs = cms.string("noPileUpPFMEt"),
-    recoVertices = cms.string(""),
-    #recoVertices = cms.string("offlinePrimaryVertices"),
+    #recoVertices = cms.string(""),
+    recoVertices = cms.string("offlinePrimaryVertices"),
     recoGoodVertices = cms.string("goodOfflinePrimaryVertices"),
     recoRho_kt6CaloJets = cms.string("kt6CaloJets:rho"),
     recoRho_kt6PFJets = cms.string("kt6PFJets:rho"),
@@ -224,6 +237,7 @@ process.handler = cms.PSet(
     # Trigger results
     triggerResults = cms.string("TriggerResults::HLT"),
     triggerEvent = cms.string("hltTriggerSummaryAOD"),
+    #triggerPrescaleTable = cms.string("hltPrescaleRecorder"),
     # GEN
     genJets = cms.string("ak5GenJets"),
     genMETs = cms.string("genMetTrue"),

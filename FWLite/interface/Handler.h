@@ -4,10 +4,11 @@
 #include "DataFormats/FWLite/interface/Handle.h"
 #include "DataFormats/FWLite/interface/Event.h"
 // L1
-//#include "DataFormats/L1Trigger/interface/L1EmParticle.h"
+#include "DataFormats/L1Trigger/interface/L1EmParticle.h"
 #include "DataFormats/L1Trigger/interface/L1EtMissParticle.h"
+#include "DataFormats/L1Trigger/interface/L1HFRings.h"
 #include "DataFormats/L1Trigger/interface/L1JetParticle.h"
-//#include "DataFormats/L1Trigger/interface/L1MuonParticle.h"
+#include "DataFormats/L1Trigger/interface/L1MuonParticle.h"
 // HLT+RECO
 //#include "DataFormats/RecoCandidate/interface/RecoEcalCandidate.h"
 //#include "DataFormats/RecoCandidate/interface/RecoEcalCandidateFwd.h"
@@ -42,6 +43,7 @@
 // Trigger results
 #include "DataFormats/Common/interface/TriggerResults.h"
 #include "DataFormats/HLTReco/interface/TriggerEvent.h"
+//#include "DataFormats/HLTReco/interface/HLTPrescaleTable.h"
 // GEN
 #include "DataFormats/HepMCCandidate/interface/GenParticle.h"
 #include "SimDataFormats/GeneratorProducts/interface/GenEventInfoProduct.h"
@@ -78,6 +80,10 @@ class Handler {
         getByLabel(iEvent, "l1CenJets", l1CenJets);
         getByLabel(iEvent, "l1ForJets", l1ForJets);
         getByLabel(iEvent, "l1TauJets", l1TauJets);
+        getByLabel(iEvent, "l1NoIsoEGs", l1NoIsoEGs);
+        getByLabel(iEvent, "l1IsoEGs", l1IsoEGs);
+        getByLabel(iEvent, "l1Mus", l1Mus);
+        getByLabel(iEvent, "l1HFRings", l1HFRings);
         getByLabel(iEvent, "hltCaloJets", hltCaloJets);
         getByLabel(iEvent, "hltCaloJetIDPasseds", hltCaloJetIDPasseds);
         getByLabel(iEvent, "hltCaloJetL1Fasts", hltCaloJetL1Fasts);
@@ -119,6 +125,7 @@ class Handler {
         getByLabel(iEvent, "patTaus", patTaus);
         getByLabel(iEvent, "triggerResults", triggerResults);
         getByLabel(iEvent, "triggerEvent", triggerEvent);
+        //getByLabel(iEvent, "triggerPrescaleTable", triggerPrescaleTable);
         if (!isData_) {
             getByLabel(iEvent, "genJets", genJets);
             getByLabel(iEvent, "genMETs", genMETs);
@@ -132,11 +139,15 @@ class Handler {
     }
 
     // L1
-    edm::Handle<std::vector<l1extra::L1EtMissParticle> > l1METs;
-    edm::Handle<std::vector<l1extra::L1EtMissParticle> > l1MHTs;
-    edm::Handle<std::vector<l1extra::L1JetParticle   > > l1CenJets;
-    edm::Handle<std::vector<l1extra::L1JetParticle   > > l1ForJets;
-    edm::Handle<std::vector<l1extra::L1JetParticle   > > l1TauJets;
+    edm::Handle<std::vector<l1extra::L1EtMissParticle   > > l1METs;
+    edm::Handle<std::vector<l1extra::L1EtMissParticle   > > l1MHTs;
+    edm::Handle<std::vector<l1extra::L1JetParticle      > > l1CenJets;
+    edm::Handle<std::vector<l1extra::L1JetParticle      > > l1ForJets;
+    edm::Handle<std::vector<l1extra::L1JetParticle      > > l1TauJets;
+    edm::Handle<std::vector<l1extra::L1EmParticle       > > l1NoIsoEGs;
+    edm::Handle<std::vector<l1extra::L1EmParticle       > > l1IsoEGs;
+    edm::Handle<std::vector<l1extra::L1MuonParticle     > > l1Mus;
+    edm::Handle<std::vector<l1extra::L1HFRings          > > l1HFRings;
 
     // HLT
     edm::Handle<std::vector<reco::CaloJet      > > hltCaloJets;
@@ -186,6 +197,7 @@ class Handler {
     // Trigger results
     edm::Handle<edm::TriggerResults              > triggerResults;
     edm::Handle<trigger::TriggerEvent            > triggerEvent;
+    //edm::Handle<trigger::HLTPrescaleTable        > triggerPrescaleTable;
 
     // GEN/SIM
     edm::Handle<std::vector<reco::GenJet       > > genJets;
