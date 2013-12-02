@@ -1,3 +1,4 @@
+#include <vector>
 #include "JetMETTriggerAnalysis/FWLite/interface/SimpleCandidate.h"
 
 #ifdef __CINT__

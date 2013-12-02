@@ -71,8 +71,8 @@ if True:
     if dirname.startswith("/eos/uscms"):  # some files have size = 0
         basenamelist = [basename for basename in basenamelist if os.path.getsize(dirname + basename) > 1000]
     process.input.fileNames = cms.vstring()
-    process.input.fileNames.extend([dirname + basename for basename in basenamelist[1:2]])
-    #process.input.fileNames.extend([dirname + basename for basename in basenamelist])
+    #process.input.fileNames.extend([dirname + basename for basename in basenamelist[:100]])
+    process.input.fileNames.extend([dirname + basename for basename in basenamelist])
 
 
 process.output = cms.PSet(
@@ -130,14 +130,14 @@ process.analyzer = cms.PSet(
         'HLT_L1ETM30_v2',
         'HLT_L1ETM40_v2',
         'HLT_L1ETM70_v2',
-        'HLT_MET120_HBHENoiseCleaned_v6',
-        'HLT_MET120_v13',
-        'HLT_MET200_HBHENoiseCleaned_v5',
-        'HLT_MET200_v12',
-        'HLT_MET300_HBHENoiseCleaned_v5',
-        'HLT_MET300_v4',
-        'HLT_MET400_HBHENoiseCleaned_v5',
-        'HLT_MET400_v7',
+        #'HLT_MET120_HBHENoiseCleaned_v6',
+        #'HLT_MET120_v13',
+        #'HLT_MET200_HBHENoiseCleaned_v5',
+        #'HLT_MET200_v12',
+        #'HLT_MET300_HBHENoiseCleaned_v5',
+        #'HLT_MET300_v4',
+        #'HLT_MET400_HBHENoiseCleaned_v5',
+        #'HLT_MET400_v7',
         'HLT_MonoCentralPFJet80_PFMETnoMu105_NHEF0p95_v4',
         'HLT_PFMET150_v7',
         'HLT_PFMET180_v7',
@@ -166,14 +166,12 @@ process.analyzer = cms.PSet(
         "p_EcalDeadCellBoundaryEnergyFilter",
         "p_tobtecfakesFilters",
     ),
-    pfjetPtMin = cms.double(30),
-    pfjetEtaMax = cms.double(5),
-    pfjetEtaMaxCtr = cms.double(2.5),
-    calojetPtMin = cms.double(30),
-    calojetEtaMax = cms.double(5),
-    calojetEtaMaxCtr = cms.double(2.6),
-    calometcleanPtMin = cms.double(60),
-    calometjetidPtMin = cms.double(60),
+    hltCaloJetPtMin = cms.double(10),
+    hltCaloJetEtaMax = cms.double(5),
+    hltPFJetPtMin = cms.double(15),
+    hltPFJetEtaMax = cms.double(5),
+    patJetPtMin = cms.double(15),
+    patJetEtaMax = cms.double(5),
     isData = cms.bool(options.isData),
     verbose = cms.bool(options.verbose),
 )
@@ -192,15 +190,18 @@ process.handler = cms.PSet(
     # HLT
     hltCaloJets = cms.string("hltAntiKT5CaloJets"),
     #hltCaloJets = cms.string("hltAntiKT5CaloJetsPF"),
-    hltCaloJetIDPasseds = cms.string(""),
-    #hltCaloJetIDPasseds = cms.string("hltCaloJetIDPassed"),
-    hltCaloJetL1Fasts = cms.string("hltCaloJetL1FastJetCorrected"),
+    hltCaloJetsIDPassed = cms.string(""),
+    #hltCaloJetsIDPassed = cms.string("hltCaloJetIDPassed"),
+    hltCaloJetsL1Fast = cms.string("hltCaloJetL1FastJetCorrected"),
     hltCaloMETs = cms.string("hltMet"),
     hltCaloMETCleans = cms.string("hltMetClean"),
-    hltCaloMETJetIDCleans = cms.string("hltMetCleanUsingJetID"),
+    hltCaloMETCleansUsingJetID = cms.string("hltMetCleanUsingJetID"),
     hltPFMETs = cms.string("hltPFMETProducer"),
-    hltPFMETNoMus = cms.string("hltPFMETnoMu"),
+    hltPFMETsNoMu = cms.string("hltPFMETnoMu"),
     hltTrackMETs = cms.string("hltTrackMetProducer"),
+    hltHTMHTs = cms.string("hltHtMht"),
+    hltPFHTMHTs = cms.string(""),
+    hltPFHTMHTsNoPU = cms.string("hltPFHTNoPU"),
     hltMuons = cms.string(""),
     hltPFCandidates = cms.string("hltParticleFlow"),
     hltPFJets = cms.string("hltAntiKT5PFJets"),
@@ -250,3 +251,25 @@ process.handler = cms.PSet(
     hltCaloJetIDs = cms.string("hltAK5JetID"),
     )
 
+import csv
+lumiA = []
+lumiB = []
+lumiC = []
+with open('/uscms_data/d2/jiafu/Trigger/CMSSW_5_3_11/src/RecoLuminosity/LumiDB/jftest/lumibyls_HLT_MET80_v5.csv') as csvfile:
+    reader = csv.reader(csvfile)
+    for row in reader:
+        if not row[7][0].isdigit():  continue
+        runlumi = int(row[0].split(":")[0]) * 100000 + int(row[1].split(":")[0])
+        effective = float(row[7])
+        if effective > 1200:
+            lumiC.append(runlumi)
+        elif effective > 800:
+            lumiB.append(runlumi)
+        else:
+            lumiA.append(runlumi)
+
+process.lumicalc = cms.PSet(
+    lumiA = cms.vuint64(lumiA),
+    lumiB = cms.vuint64(lumiB),
+    lumiC = cms.vuint64(lumiC),
+    )

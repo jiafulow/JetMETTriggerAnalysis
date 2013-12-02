@@ -55,6 +55,7 @@ namespace simple {
         float nef;
         int nch;
         int ntot;
+        float csv;
     };
     
     // refer DataFormats/METReco/interface/MET.h

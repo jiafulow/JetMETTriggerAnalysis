@@ -85,14 +85,17 @@ class Handler {
         getByLabel(iEvent, "l1Mus", l1Mus);
         getByLabel(iEvent, "l1HFRings", l1HFRings);
         getByLabel(iEvent, "hltCaloJets", hltCaloJets);
-        getByLabel(iEvent, "hltCaloJetIDPasseds", hltCaloJetIDPasseds);
-        getByLabel(iEvent, "hltCaloJetL1Fasts", hltCaloJetL1Fasts);
+        getByLabel(iEvent, "hltCaloJetsIDPassed", hltCaloJetsIDPassed);
+        getByLabel(iEvent, "hltCaloJetsL1Fast", hltCaloJetsL1Fast);
         getByLabel(iEvent, "hltCaloMETs", hltCaloMETs);
         getByLabel(iEvent, "hltCaloMETCleans", hltCaloMETCleans);
-        getByLabel(iEvent, "hltCaloMETJetIDCleans", hltCaloMETJetIDCleans);
+        getByLabel(iEvent, "hltCaloMETCleansUsingJetID", hltCaloMETCleansUsingJetID);
         getByLabel(iEvent, "hltPFMETs", hltPFMETs);
-        getByLabel(iEvent, "hltPFMETNoMus", hltPFMETNoMus);
+        getByLabel(iEvent, "hltPFMETsNoMu", hltPFMETsNoMu);
         getByLabel(iEvent, "hltTrackMETs", hltTrackMETs);
+        getByLabel(iEvent, "hltHTMHTs", hltHTMHTs);
+        getByLabel(iEvent, "hltPFHTMHTs", hltPFHTMHTs);
+        getByLabel(iEvent, "hltPFHTMHTsNoPU", hltPFHTMHTsNoPU);
         getByLabel(iEvent, "hltMuons", hltMuons);
         getByLabel(iEvent, "hltPFCandidates", hltPFCandidates);
         getByLabel(iEvent, "hltPFJets", hltPFJets);
@@ -151,14 +154,17 @@ class Handler {
 
     // HLT
     edm::Handle<std::vector<reco::CaloJet      > > hltCaloJets;
-    edm::Handle<std::vector<reco::CaloJet      > > hltCaloJetIDPasseds;
-    edm::Handle<std::vector<reco::CaloJet      > > hltCaloJetL1Fasts;
+    edm::Handle<std::vector<reco::CaloJet      > > hltCaloJetsIDPassed;
+    edm::Handle<std::vector<reco::CaloJet      > > hltCaloJetsL1Fast;
     edm::Handle<std::vector<reco::CaloMET      > > hltCaloMETs;
     edm::Handle<std::vector<reco::CaloMET      > > hltCaloMETCleans;
-    edm::Handle<std::vector<reco::CaloMET      > > hltCaloMETJetIDCleans;
+    edm::Handle<std::vector<reco::CaloMET      > > hltCaloMETCleansUsingJetID;
     edm::Handle<std::vector<reco::MET          > > hltPFMETs;
-    edm::Handle<std::vector<reco::MET          > > hltPFMETNoMus;
+    edm::Handle<std::vector<reco::MET          > > hltPFMETsNoMu;
     edm::Handle<std::vector<reco::MET          > > hltTrackMETs;
+    edm::Handle<std::vector<reco::MET          > > hltHTMHTs;
+    edm::Handle<std::vector<reco::MET          > > hltPFHTMHTs;
+    edm::Handle<std::vector<reco::MET          > > hltPFHTMHTsNoPU;
     edm::Handle<std::vector<reco::Muon         > > hltMuons;
     edm::Handle<std::vector<reco::PFCandidate  > > hltPFCandidates;
     edm::Handle<std::vector<reco::PFJet        > > hltPFJets;

@@ -130,6 +130,7 @@ void simple_fill(const T& cand, bool jetID, simple::PFJet& simple) {
     simple.nef    = cand.neutralEmEnergyFraction();
     simple.nch    = cand.chargedMultiplicity();
     simple.ntot   = cand.numberOfDaughters();
+    simple.csv    = (patJet != 0 ? patJet->bDiscriminator("combinedSecondaryVertexBJetTags") : -999);
     return;
 }
 
@@ -206,6 +207,14 @@ reco::Candidate::LorentzVector build_met(const std::vector<T>& particles, double
     return met;
 }
 
+template<typename T>
+bool isEqualEtaPhi(const T& j1, const T& j2) {
+    double epsilon = 1e-3;
+    bool equal = (fabs(j1.eta() - j2.eta()) < epsilon &&
+                  fabs(reco::deltaPhi(j1.phi(), j2.phi())) < epsilon);
+    return equal;
+}
+
 
 //______________________________________________________________________________
 // Compactify
@@ -231,6 +240,7 @@ int main(int argc, char *argv[]) {
     const edm::ParameterSet& outputpset   = cfg.getParameter<edm::ParameterSet>("output");
     const edm::ParameterSet& analyzerpset = cfg.getParameter<edm::ParameterSet>("analyzer");
     const edm::ParameterSet& handlerpset  = cfg.getParameter<edm::ParameterSet>("handler");
+    const edm::ParameterSet& lumicalcpset  = cfg.getParameter<edm::ParameterSet>("lumicalc");
 
     // Read from input pset
     const std::vector<std::string>& infilenames_all = inputpset.getParameter<std::vector<std::string> >("fileNames");
@@ -270,14 +280,12 @@ int main(int argc, char *argv[]) {
     const std::vector<std::string>& optmetfilters = analyzerpset.getParameter<std::vector<std::string> >("optmetfilters");
     const edm::ParameterSet& hltJetIDParams = analyzerpset.getParameter<edm::ParameterSet>("hltJetID");
     const edm::ParameterSet& jetIDParams = analyzerpset.getParameter<edm::ParameterSet>("jetID");
-    //const double pfjetPtMin = analyzerpset.getParameter<double>("pfjetPtMin");
-    //const double pfjetEtaMax = analyzerpset.getParameter<double>("pfjetEtaMax");
-    //const double pfjetEtaMaxCtr = analyzerpset.getParameter<double>("pfjetEtaMaxCtr");
-    //const double calojetPtMin = analyzerpset.getParameter<double>("calojetPtMin");
-    //const double calojetEtaMax = analyzerpset.getParameter<double>("calojetEtaMax");
-    //const double calojetEtaMaxCtr = analyzerpset.getParameter<double>("calojetEtaMaxCtr");
-    //const double calometcleanPtMin = analyzerpset.getParameter<double>("calometcleanPtMin");
-    //const double calometjetidPtMin = analyzerpset.getParameter<double>("calometjetidPtMin");
+    const double hltCaloJetPtMin = analyzerpset.getParameter<double>("hltCaloJetPtMin");
+    const double hltCaloJetEtaMax = analyzerpset.getParameter<double>("hltCaloJetEtaMax");
+    const double hltPFJetPtMin = analyzerpset.getParameter<double>("hltPFJetPtMin");
+    const double hltPFJetEtaMax = analyzerpset.getParameter<double>("hltPFJetEtaMax");
+    const double patJetPtMin = analyzerpset.getParameter<double>("patJetPtMin");
+    const double patJetEtaMax = analyzerpset.getParameter<double>("patJetEtaMax");
     const bool isData = analyzerpset.getParameter<bool>("isData");
     const bool verbose = analyzerpset.getParameter<bool>("verbose");
     HLTJetIDHelper hltJetIDHelper(hltJetIDParams);
@@ -285,6 +293,11 @@ int main(int argc, char *argv[]) {
 
     // Read from handler pset
     Handler handler(handlerpset, isData);
+
+    // Read from lumicalc pset
+    const std::vector<unsigned long long>& lumiA = lumicalcpset.getParameter<std::vector<unsigned long long> >("lumiA");
+    const std::vector<unsigned long long>& lumiB = lumicalcpset.getParameter<std::vector<unsigned long long> >("lumiB");
+    const std::vector<unsigned long long>& lumiC = lumicalcpset.getParameter<std::vector<unsigned long long> >("lumiC");
 
 
     //__________________________________________________________________________
@@ -297,13 +310,22 @@ int main(int argc, char *argv[]) {
     // HLT
     std::vector<simple::Particle> hltPFCandidates;
     std::vector<simple::CaloJet> hltCaloJets;
+    std::vector<simple::Jet> hltCaloJetsL1Fast;  // JetID info is not saved for this collection
     std::vector<simple::PFJet> hltPFJets;
+    std::vector<simple::PFJet> hltPFJetsNoPU;
+    std::vector<simple::PFJet> hltPFJetsL1FastL2L3;
+    std::vector<simple::PFJet> hltPFJetsL1FastL2L3NoPU;
     simple::MET hltCaloMET;
     simple::MET hltCaloMETClean;
-    simple::MET hltCaloMETJetIDClean;
+    simple::MET hltCaloMETCleanUsingJetID;
     simple::MET hltPFMET;
+    simple::MET hltPFMETNoMu;
     simple::MET hltTrackMET;
+    simple::MET hltHTMHT;
+    simple::MET hltPFHTMHT;
+    simple::MET hltPFHTMHTNoPU;
     double hltRho_kt6CaloJets, hltRho_kt6PFJets;
+    unsigned int lumilevel;
     // non-HLT
     std::vector<simple::Particle> recoPFCandidates;
     std::vector<simple::PFJet> patJets;
@@ -315,6 +337,7 @@ int main(int argc, char *argv[]) {
     simple::MET patMET;
     simple::MET patMPT;
     double recoRho_kt6CaloJets, recoRho_kt6PFJets;
+    unsigned int topo_patJets;
 
 
     TFile* outfile = new TFile(outfilename, "RECREATE");
@@ -329,14 +352,23 @@ int main(int argc, char *argv[]) {
     // HLT
     outtree->Branch("hltPFCandidates", &hltPFCandidates);
     outtree->Branch("hltCaloJets", &hltCaloJets);
+    outtree->Branch("hltCaloJetsL1Fast", & hltCaloJetsL1Fast);
     outtree->Branch("hltPFJets", &hltPFJets);
+    outtree->Branch("hltPFJetsNoPU", &hltPFJetsNoPU);
+    outtree->Branch("hltPFJetsL1FastL2L3", &hltPFJetsL1FastL2L3);
+    outtree->Branch("hltPFJetsL1FastL2L3NoPU", &hltPFJetsL1FastL2L3NoPU);
     outtree->Branch("hltCaloMET", &hltCaloMET);
     outtree->Branch("hltCaloMETClean", &hltCaloMETClean);
-    outtree->Branch("hltCaloMETJetIDClean", &hltCaloMETJetIDClean);
+    outtree->Branch("hltCaloMETCleanUsingJetID", &hltCaloMETCleanUsingJetID);
     outtree->Branch("hltPFMET", &hltPFMET);
+    outtree->Branch("hltPFMETNoMu", &hltPFMETNoMu);
     outtree->Branch("hltTrackMET", &hltTrackMET);
+    outtree->Branch("hltHTMHT", &hltHTMHT);
+    outtree->Branch("hltPFHTMHT", &hltPFHTMHT);
+    outtree->Branch("hltPFHTMHTNoPU", &hltPFHTMHTNoPU);
     outtree->Branch("hltRho_kt6CaloJets", &hltRho_kt6CaloJets);
     outtree->Branch("hltRho_kt6PFJets", &hltRho_kt6PFJets);
+    outtree->Branch("lumilevel", &lumilevel);
     // non-HLT
     outtree->Branch("recoPFCandidates", &recoPFCandidates);
     outtree->Branch("patJets", &patJets);
@@ -349,6 +381,7 @@ int main(int argc, char *argv[]) {
     outtree->Branch("patMPT", &patMPT);
     outtree->Branch("recoRho_kt6CaloJets", &recoRho_kt6CaloJets);
     outtree->Branch("recoRho_kt6PFJets", &recoRho_kt6PFJets);
+    outtree->Branch("topo_patJets", &topo_patJets);
 
 
     //__________________________________________________________________________
@@ -363,6 +396,8 @@ int main(int argc, char *argv[]) {
     fwlite::ChainEvent ev(infilenames);
     int ievent = 0;
     int jevent = 0;
+    unsigned long long runlumi_old = 0;
+    unsigned int lumilevel_old = 0;
     for(ev.toBegin(); !ev.atEnd(); ++ev, ++ievent) {
         // Skip events
         if (ievent < skipEvents)  continue;
@@ -424,24 +459,25 @@ int main(int argc, char *argv[]) {
 
         //______________________________________________________________________
         // hltPFCandidates
-        if (verbose)  std::cout << "compactify: Begin filling hltPFCandidates..." << std::endl;
-        hltPFCandidates.clear();
-        assert(handler.hltPFPileUpFlags->size() == handler.hltPFCandidates->size());
-        for (unsigned int i = 0; i < handler.hltPFCandidates->size(); ++i) {
-            simple::Particle simple;
-            const reco::PFCandidate& cand = handler.hltPFCandidates->at(i);
-            const bool& isPU = handler.hltPFPileUpFlags->at(i);
-            simple_fill(cand, isPU, simple);
-            hltPFCandidates.push_back(simple);
-        }
+        //if (verbose)  std::cout << "compactify: Begin filling hltPFCandidates..." << std::endl;
+        //hltPFCandidates.clear();
+        //assert(handler.hltPFPileUpFlags->size() == handler.hltPFCandidates->size());
+        //for (unsigned int i = 0; i < handler.hltPFCandidates->size(); ++i) {
+        //    simple::Particle simple;
+        //    const reco::PFCandidate& cand = handler.hltPFCandidates->at(i);
+        //    const bool& isPU = handler.hltPFPileUpFlags->at(i);
+        //    simple_fill(cand, isPU, simple);
+        //    hltPFCandidates.push_back(simple);
+        //}
 
         //______________________________________________________________________
         // hltCaloJets
         if (verbose)  std::cout << "compactify: Begin filling hltCaloJets..." << std::endl;
         hltCaloJets.clear();
+        assert(handler.hltCaloJets->size() == handler.hltCaloJetIDs->size());
         for (unsigned int i = 0; i < handler.hltCaloJets->size(); ++i) {
             const reco::CaloJet& jet = handler.hltCaloJets->at(i);
-            assert(handler.hltCaloJets->size() == handler.hltCaloJetIDs->size());
+            if (jet.pt() < hltCaloJetPtMin || fabs(jet.eta()) > hltCaloJetEtaMax)  continue;
             // These 2 lines don't work in FWLite
             //const reco::CaloJetRef jetref(handler.hltCaloJets, i);
             //const reco::JetID jetID_ = (*handler.hltCaloJetIDs)[jetref];
@@ -454,16 +490,58 @@ int main(int argc, char *argv[]) {
             hltCaloJets.push_back(simple);
         }
 
+        hltCaloJetsL1Fast.clear();
+        for (unsigned int i = 0; i < handler.hltCaloJetsL1Fast->size(); ++i) {
+            const reco::CaloJet& jet = handler.hltCaloJetsL1Fast->at(i);
+            if (jet.pt() < hltCaloJetPtMin || fabs(jet.eta()) > hltCaloJetEtaMax)  continue;
+            simple::Jet simple;
+            simple_fill(jet, true, simple);  // already passed JetID
+            hltCaloJetsL1Fast.push_back(simple);
+        }
+
         //______________________________________________________________________
         // hltPFJets
         if (verbose)  std::cout << "compactify: Begin filling hltPFJets..." << std::endl;
         hltPFJets.clear();
         for (unsigned int i = 0; i < handler.hltPFJets->size(); ++i) {
             const reco::PFJet& jet = handler.hltPFJets->at(i);
+            if (jet.pt() < hltPFJetPtMin || fabs(jet.eta()) > hltPFJetEtaMax)  continue;
             simple::PFJet simple;
             bool jetID = hltJetIDHelper(jet);
             simple_fill(jet, jetID, simple);
             hltPFJets.push_back(simple);
+        }
+
+        hltPFJetsNoPU.clear();
+        for (unsigned int i = 0; i < handler.hltPFJetsNoPU->size(); ++i) {
+            const reco::PFJet& jet = handler.hltPFJetsNoPU->at(i);
+            if (jet.pt() < hltPFJetPtMin || fabs(jet.eta()) > hltPFJetEtaMax)  continue;
+            simple::PFJet simple;
+            bool jetID = hltJetIDHelper(jet);
+            simple_fill(jet, jetID, simple);
+            hltPFJetsNoPU.push_back(simple);
+        }
+
+        hltPFJetsL1FastL2L3.clear();
+        assert(handler.hltPFJets->size() == handler.hltPFJetsL1FastL2L3->size());
+        for (unsigned int i = 0; i < handler.hltPFJetsL1FastL2L3->size(); ++i) {
+            const reco::PFJet& jet = handler.hltPFJetsL1FastL2L3->at(i);
+            if (jet.pt() < hltPFJetPtMin || fabs(jet.eta()) > hltPFJetEtaMax)  continue;
+            simple::PFJet simple;
+            bool jetID = hltJetIDHelper(jet);
+            simple_fill(jet, jetID, simple);
+            hltPFJetsL1FastL2L3.push_back(simple);
+        }
+
+        hltPFJetsL1FastL2L3NoPU.clear();
+        assert(handler.hltPFJetsNoPU->size() == handler.hltPFJetsL1FastL2L3NoPU->size());
+        for (unsigned int i = 0; i < handler.hltPFJetsL1FastL2L3NoPU->size(); ++i) {
+            const reco::PFJet& jet = handler.hltPFJetsL1FastL2L3NoPU->at(i);
+            if (jet.pt() < hltPFJetPtMin || fabs(jet.eta()) > hltPFJetEtaMax)  continue;
+            simple::PFJet simple;
+            bool jetID = hltJetIDHelper(jet);
+            simple_fill(jet, jetID, simple);
+            hltPFJetsL1FastL2L3.push_back(simple);
         }
 
         //______________________________________________________________________
@@ -477,9 +555,9 @@ int main(int argc, char *argv[]) {
         simple_fill(handler.hltCaloMETCleans->at(0), hltCaloMETClean);
 
         //______________________________________________________________________
-        // hltCaloMETJetIDClean
-        if (verbose)  std::cout << "compactify: Begin filling hltCaloMETJetIDClean..." << std::endl;
-        simple_fill(handler.hltCaloMETJetIDCleans->at(0), hltCaloMETJetIDClean);
+        // hltCaloMETCleanUsingJetID
+        if (verbose)  std::cout << "compactify: Begin filling hltCaloMETCleanUsingJetID..." << std::endl;
+        simple_fill(handler.hltCaloMETCleansUsingJetID->at(0), hltCaloMETCleanUsingJetID);
 
         //______________________________________________________________________
         // hltPFMET
@@ -487,9 +565,29 @@ int main(int argc, char *argv[]) {
         simple_fill(handler.hltPFMETs->at(0), hltPFMET);
 
         //______________________________________________________________________
+        // hltPFMETNoMu
+        if (verbose)  std::cout << "compactify: Begin filling hltPFMETNoMu..." << std::endl;
+        simple_fill(handler.hltPFMETsNoMu->at(0), hltPFMETNoMu);
+
+        //______________________________________________________________________
         // hltTrackMET
         if (verbose)  std::cout << "compactify: Begin filling hltTrackMET..." << std::endl;
         simple_fill(handler.hltTrackMETs->at(0), hltTrackMET);
+
+        //______________________________________________________________________
+        // hltHTMHT
+        if (verbose)  std::cout << "compactify: Begin filling hltHTMHT..." << std::endl;
+        simple_fill(handler.hltHTMHTs->at(0), hltHTMHT);
+
+        //______________________________________________________________________
+        // hltPFHTMHT
+        //if (verbose)  std::cout << "compactify: Begin filling hltPFHTMHT..." << std::endl;
+        //simple_fill(handler.hltPFHTMHTs->at(0), hltPFHTMHT);
+
+        //______________________________________________________________________
+        // hltPFHTMHTNoPU
+        if (verbose)  std::cout << "compactify: Begin filling hltPFHTMHTNoPU..." << std::endl;
+        simple_fill(handler.hltPFHTMHTsNoPU->at(0), hltPFHTMHTNoPU);
 
         //______________________________________________________________________
         // hltRhos
@@ -498,17 +596,50 @@ int main(int argc, char *argv[]) {
         hltRho_kt6PFJets = *(handler.hltRho_kt6PFJets);
 
         //______________________________________________________________________
-        // recoPFCandidates
-        if (verbose)  std::cout << "compactify: Begin filling recoPFCandidates..." << std::endl;
-        recoPFCandidates.clear();
-        assert(handler.patPFPileUpFlags->size() == handler.recoPFCandidates->size());
-        for (unsigned int i = 0; i < handler.recoPFCandidates->size(); ++i) {
-            simple::Particle simple;
-            const reco::PFCandidate& cand = handler.recoPFCandidates->at(i);
-            const bool& isPU = handler.patPFPileUpFlags->at(i);
-            simple_fill(cand, isPU, simple);
-            recoPFCandidates.push_back(simple);
+        // lumilevel
+        if (verbose)  std::cout << "compactify: Begin filling lumilevel..." << std::endl;
+        lumilevel = 0;
+        unsigned long long runlumi = ev.id().run();
+        runlumi *= 100000;
+        runlumi += ev.id().luminosityBlock();
+        if (runlumi == runlumi_old) {
+            lumilevel = lumilevel_old;
         }
+
+        if (ev.id().run() != 1) {  // not MC
+            std::vector<unsigned long long>::const_iterator it;
+            if (lumilevel == 0) {
+                it = std::find(lumiC.begin(), lumiC.end(), runlumi);
+                if (it != lumiC.end())  lumilevel = 3;
+            }
+            if (lumilevel == 0) {
+                it = std::find(lumiB.begin(), lumiB.end(), runlumi);
+                if (it != lumiB.end())  lumilevel = 2;
+            }
+            if (lumilevel == 0) {
+                it = std::find(lumiA.begin(), lumiA.end(), runlumi);
+                if (it != lumiA.end())  lumilevel = 1;
+            }
+            if (lumilevel == 0)
+                std::cout << "ERROR: runlumi " << runlumi << " not found!" << std::endl;
+            else if (lumilevel_old == 0 || runlumi_old != runlumi) {
+                runlumi_old = runlumi;
+                lumilevel_old = lumilevel;
+            }
+        }
+
+        //______________________________________________________________________
+        // recoPFCandidates
+        //if (verbose)  std::cout << "compactify: Begin filling recoPFCandidates..." << std::endl;
+        //recoPFCandidates.clear();
+        //assert(handler.patPFPileUpFlags->size() == handler.recoPFCandidates->size());
+        //for (unsigned int i = 0; i < handler.recoPFCandidates->size(); ++i) {
+        //    simple::Particle simple;
+        //    const reco::PFCandidate& cand = handler.recoPFCandidates->at(i);
+        //    const bool& isPU = handler.patPFPileUpFlags->at(i);
+        //    simple_fill(cand, isPU, simple);
+        //    recoPFCandidates.push_back(simple);
+        //}
 
         //______________________________________________________________________
         // patJets
@@ -516,6 +647,7 @@ int main(int argc, char *argv[]) {
         patJets.clear();
         for (unsigned int i = 0; i < handler.patJets->size(); ++i) {
             const pat::Jet& jet = handler.patJets->at(i);
+            if (jet.pt() < patJetPtMin || fabs(jet.eta()) > patJetEtaMax)  continue;
             simple::PFJet simple;
             bool jetID = jetIDHelper(jet);
             simple_fill(jet, jetID, simple);
@@ -557,6 +689,50 @@ int main(int argc, char *argv[]) {
         if (verbose)  std::cout << "compactify: Begin filling recoRhos..." << std::endl;
         recoRho_kt6CaloJets = *(handler.recoRho_kt6CaloJets);
         recoRho_kt6PFJets = *(handler.recoRho_kt6PFJets);
+
+        //______________________________________________________________________
+        // topo_patJets
+        if (verbose)  std::cout << "compactify: Begin filling topo_patJets..." << std::endl;
+        topo_patJets = 0;
+        for (unsigned int i = 0; i < handler.patJets->size(); ++i) {
+            const pat::Jet& jet = handler.patJets->at(i);
+            if (jet.pt() < 30 || fabs(jet.eta()) > 2.5)  continue;
+            topo_patJets += 1;
+        }
+        if (topo_patJets > 2)
+            topo_patJets = 2;
+
+        // Check for HT
+        if (handler.patJets->size() >= 1) {
+            double ht_patJets = 0.;
+            for (unsigned int i = 0; i < handler.patJets->size(); ++i) {
+                const pat::Jet& jet = handler.patJets->at(i);
+                if (jet.pt() < 40 || fabs(jet.eta()) > 3)  continue;
+                ht_patJets += jet.pt();
+            }
+            if (ht_patJets > 300)
+                topo_patJets = 3;
+        }
+
+        // Check for VBF
+        if (handler.patJets->size() >= 2) {
+            for (unsigned int i = 0; i < handler.patJets->size()-1; ++i) {
+                const pat::Jet& jet1 = handler.patJets->at(i);
+                if (jet1.pt() < 30 || fabs(jet1.eta()) > 4.7)  continue;
+
+                for (unsigned int j = i+1; j < handler.patJets->size(); ++j) {
+                    const pat::Jet& jet2 = handler.patJets->at(j);
+                    if (jet2.pt() < 30 || fabs(jet2.eta()) > 4.7)  continue;
+
+                    if ((jet1.p4() + jet2.p4()).mass() > 600 && fabs(jet1.eta() - jet2.eta()) > 3.5)
+                        topo_patJets = 4;
+
+                    if (topo_patJets == 4)  break;
+                }
+                if (topo_patJets == 4)  break;
+            }
+        }
+
 
         //______________________________________________________________________
         // Fill
