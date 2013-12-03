@@ -123,11 +123,11 @@ imgdir = "figures_20131130/"  # for Torino workshop
 if not imgdir.endswith("/"):  imgdir += "/"
 
 sections = {}
-sections["overview"] = True
-sections["overview_prof"] = True
-sections["topology"] = True
-sections["topology_online"] = True
-sections["puremet"] = True
+sections["overview"] = False
+sections["overview_prof"] = False
+sections["topology"] = False
+sections["topology_online"] = False
+sections["puremet"] = False
 sections["puremet_eff"] = True
 
 
@@ -1043,6 +1043,7 @@ if sections["puremet_eff"]:
     sel_trig4 = "(hltCaloMET.pt>80 && hltPFMET.pt>150 && hltTrackMET.pt>15)"
     sel_trig5 = "(hltCaloMET.pt>80 && hltPFMET.pt>150 && abs(deltaPhi(hltPFMET.phi,hltTrackMET.phi))<0.5)"
     sel_trig11 = "(hltCaloMET.pt>80 && hltTrackMET.pt>90)"
+    sel_trig12 = "(hltTrackMET.pt>90)"
 
     # recoPFMETT0T1
     variable = ("recoPFMETT0T1", "recoPFMETT0T1.pt")
@@ -1068,6 +1069,7 @@ if sections["puremet_eff"]:
     # recoPFMETMVA
     variable = ("recoPFMETMVA", "recoPFMETMVA.pt")
     binning = ("#scale[0.7]{RECO} MVA PFMET [GeV]", len(bins)-1, array('f',bins))
+    addsel = "(1)"
     params = [
         #(variable[0]+"_nofilt", kBlack, kWhite, variable[1], "*".join([sel, addsel])),
         (variable[0]+""       , kBlack  , kGray , variable[1], "*".join([sel, addsel, sel_noNoise])),
@@ -1087,6 +1089,7 @@ if sections["puremet_eff"]:
     # recoPFMETT0T1
     variable = ("recoPFMETT0T1", "recoPFMETT0T1.pt")
     binning = ("#scale[0.7]{RECO} Type-0+1 PFMET [GeV]", len(bins)-1, array('f',bins))
+    addsel = "(1)"
     params = [
         #(variable[0]+"_nofilt", kBlack, kWhite, variable[1], "*".join([sel, addsel])),
         (variable[0]+""       , kBlack  , kGray , variable[1], "*".join([sel, addsel, sel_noNoise])),
@@ -1106,6 +1109,7 @@ if sections["puremet_eff"]:
     # recoPFMETMVA
     variable = ("recoPFMETMVA", "recoPFMETMVA.pt")
     binning = ("#scale[0.7]{RECO} MVA PFMET [GeV]", len(bins)-1, array('f',bins))
+    addsel = "(1)"
     params = [
         #(variable[0]+"_nofilt", kBlack, kWhite, variable[1], "*".join([sel, addsel])),
         (variable[0]+""       , kBlack  , kGray , variable[1], "*".join([sel, addsel, sel_noNoise])),
@@ -1126,6 +1130,7 @@ if sections["puremet_eff"]:
     # recoPFMETT0T1 for hltTrackMET_standalone
     variable = ("recoPFMETT0T1", "recoPFMETT0T1.pt")
     binning = ("#scale[0.7]{RECO} Type-0+1 PFMET [GeV]", len(bins)-1, array('f',bins))
+    addsel = "(1)"
     params = [
         #(variable[0]+"_nofilt", kBlack, kWhite, variable[1], "*".join([sel, addsel])),
         (variable[0]+""          , kBlack  , kGray , variable[1], "*".join([sel, addsel, sel_noNoise])),
@@ -1149,9 +1154,7 @@ if sections["puremet_eff"]:
     line.DrawLine(0, 1, histos[0].GetBinLowEdge(histos[0].GetNbinsX()+1), 1)
     save("puremet_eff_trk_"+variable[0])
 
-    # recoPFMETMVA for hltTrackMET_standalone
-    variable = ("recoPFMETMVA", "recoPFMETMVA.pt")
-    binning = ("#scale[0.7]{RECO} MVA PFMET [GeV]", len(bins)-1, array('f',bins))
+    addsel = "(hltCaloMETClean.pt>50 && hltCaloMETCleanUsingJetID.pt>50)"
     params = [
         #(variable[0]+"_nofilt", kBlack, kWhite, variable[1], "*".join([sel, addsel])),
         (variable[0]+""          , kBlack  , kGray , variable[1], "*".join([sel, addsel, sel_noNoise])),
@@ -1163,6 +1166,61 @@ if sections["puremet_eff"]:
     histos = book(params, binning)
     project(params, histos)
     draw(params, histos, "Run2012D HLT_L1ETM40_v2")
+    leg1.Clear()
+    leg1.AddEntry(histos[1], "As is (HBHE+JetID cleaned)")
+    leg1.AddEntry(histos[2], "TrackMET > 90 (HBHE+JetID cleaned)")
+    leg1.AddEntry(histos[3], "As is || TrackMET > 90 (HBHE+JetID cleaned)")
+    leg1.Draw()
+    save("puremet_eff_trk_clean_"+variable[0])
+
+
+    # patMPT for hltTrackMET_standalone
+    variable = ("patMPT", "patMPT.pt")
+    binning = ("#scale[0.7]{RECO} TrackMET [GeV]", len(bins)-1, array('f',bins))
+    addsel = "(1)"
+    params = [
+        #(variable[0]+"_nofilt", kBlack, kWhite, variable[1], "*".join([sel, addsel])),
+        (variable[0]+""          , kBlack  , kGray , variable[1], "*".join([sel, addsel, sel_noNoise])),
+        (variable[0]+"_trig1"    , kBlack  , kWhite, variable[1], "*".join([sel, addsel, sel_trig1, sel_noNoise])),
+        (variable[0]+"_trig11"   , kMagenta, kWhite, variable[1], "*".join([sel, addsel, sel_trig11, sel_noNoise])),
+        (variable[0]+"_trig1or11", kGreen-2, kWhite, variable[1], "*".join([sel, addsel, "("+sel_trig1+"||"+sel_trig11+")", sel_noNoise])),
+        (variable[0]+"_trig12"   , kBlue-2 , kWhite, variable[1], "*".join([sel, addsel, sel_trig12, sel_noNoise])),
+    ]
+
+    histos = book(params, binning)
+    project(params, histos)
+    draw(params, histos, "Run2012D HLT_L1ETM40_v2")
+    leg1 = TLegend(0.26,0.78,0.96,0.94)
+    leg1.SetFillStyle(0)
+    leg1.SetLineColor(0)
+    leg1.SetShadowColor(0)
+    leg1.SetBorderSize(0)
+    leg1.AddEntry(histos[1], "As is")
+    leg1.AddEntry(histos[2], "TrackMET > 90")
+    leg1.AddEntry(histos[3], "As is || TrackMET > 90")
+    leg1.AddEntry(histos[4], "TrackMET > 90, no CaloMET cut")
     leg1.Draw()
     line.DrawLine(0, 1, histos[0].GetBinLowEdge(histos[0].GetNbinsX()+1), 1)
     save("puremet_eff_trk_"+variable[0])
+
+    addsel = "(hltCaloMETClean.pt>50 && hltCaloMETCleanUsingJetID.pt>50)"
+    params = [
+        #(variable[0]+"_nofilt", kBlack, kWhite, variable[1], "*".join([sel, addsel])),
+        (variable[0]+""          , kBlack  , kGray , variable[1], "*".join([sel, addsel, sel_noNoise])),
+        (variable[0]+"_trig1"    , kBlack  , kWhite, variable[1], "*".join([sel, addsel, sel_trig1, sel_noNoise])),
+        (variable[0]+"_trig11"   , kMagenta, kWhite, variable[1], "*".join([sel, addsel, sel_trig11, sel_noNoise])),
+        (variable[0]+"_trig1or11", kGreen-2, kWhite, variable[1], "*".join([sel, addsel, "("+sel_trig1+"||"+sel_trig11+")", sel_noNoise])),
+        (variable[0]+"_trig12"   , kBlue-2 , kWhite, variable[1], "*".join([sel, addsel, sel_trig12, sel_noNoise])),
+    ]
+
+    histos = book(params, binning)
+    project(params, histos)
+    draw(params, histos, "Run2012D HLT_L1ETM40_v2")
+    leg1.Clear()
+    leg1.AddEntry(histos[1], "As is (HBHE+JetID cleaned)")
+    leg1.AddEntry(histos[2], "TrackMET > 90 (HBHE+JetID cleaned)")
+    leg1.AddEntry(histos[3], "As is || TrackMET > 90 (HBHE+JetID cleaned)")
+    leg1.AddEntry(histos[4], "TrackMET > 90, no CaloMET cut (HBHE+JetID cleaned)")
+    leg1.Draw()
+    save("puremet_eff_trk_clean_"+variable[0])
+
