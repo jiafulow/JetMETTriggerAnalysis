@@ -1,5 +1,5 @@
 # Import
-from ROOT import TH1, TH1F, TH2F, TProfile, TFile, TCanvas, TLegend, TColor, TLatex, TLine, gROOT, gInterpreter, gStyle, gPad, kWhite, kGray, kBlack, kRed, kBlue, kGreen, kCyan, kMagenta, kYellow
+from ROOT import TH1, TH1F, TH2F, TProfile, TFile, TCanvas, TLegend, TColor, TLatex, TLine, gROOT, gInterpreter, gStyle, gSystem, gPad, kWhite, kGray, kBlack, kRed, kBlue, kGreen, kCyan, kMagenta, kYellow
 from math import sqrt
 from array import array
 
@@ -24,6 +24,8 @@ class DrawerInit:
         gStyle.SetEndErrorSize(2)
         gStyle.SetLabelSize(0.04, "Y")
 
+        TH1.SetDefaultSumw2()
+
 def fixOverflow(h):
     nbins = h.GetNbinsX()
     if h.GetBinContent(nbins+1) > 0:
@@ -38,21 +40,41 @@ def getMaximum(histos):
         ymax = max(ymax, h.GetMaximum())
     return ymax
 
+def save(imgdir, imgname):
+    gPad.Print(imgdir+imgname+".pdf")
+    gPad.Print(imgdir+imgname+".png")
 
+
+# ______________________________________________________________________________
 # Colors
-kRed2 = TColor.GetColor("#C02020")
-kGreen2 = TColor.GetColor("#20C020")
-kBlue2 = TColor.GetColor("#2020C0")
-kCyan2 = TColor.GetColor("#20C0C0")
-kMagenta2 = TColor.GetColor("#C020C0")
-kYellow2 = TColor.GetColor("#C0C020")
-kOrange = TColor.GetColor("#FF9900")
-kOrange2 = TColor.GetColor("#FFCC33")
-kPurple2 = TColor.GetColor("#800080")
-kOlive2 = TColor.GetColor("#808000")
-kTeal2 = TColor.GetColor("#008080")
-kGold2 = TColor.GetColor("#DAA520")
-kSalmon2 = TColor.GetColor("#FA8072")
+kRed2       = TColor.GetColor("#C02020")
+kGreen2     = TColor.GetColor("#20C020")
+kBlue2      = TColor.GetColor("#2020C0")
+kCyan2      = TColor.GetColor("#20C0C0")
+kMagenta2   = TColor.GetColor("#C020C0")
+kYellow2    = TColor.GetColor("#C0C020")
+kYellow3    = TColor.GetColor("#BFBF00")
+kOrange     = TColor.GetColor("#FF9900")
+kOrange2    = TColor.GetColor("#FFCC33")
+kPurple2    = TColor.GetColor("#800080")
+kOlive2     = TColor.GetColor("#808000")
+kTeal2      = TColor.GetColor("#008080")
+kGold2      = TColor.GetColor("#DAA520")
+kSalmon2    = TColor.GetColor("#FA8072")
+kMaroon     = TColor.GetColor("#800000")
+kNavy       = TColor.GetColor("#000080")
+kLame       = TColor.GetColor("#008000")  # kGreen should have been kLime
+kPistachio  = TColor.GetColor("#93C572")
+
+mBlue       = TColor.GetColor("#3F3D99")
+mMagenta    = TColor.GetColor("#993D71")
+mGold       = TColor.GetColor("#998C3D")
+mGreen      = TColor.GetColor("#3D9956")
+mBlue2      = TColor.GetColor("#D9D8EB")
+mMagenta2   = TColor.GetColor("#EBD8E3")
+mGold2      = TColor.GetColor("#EBE8D8")
+mGreen2     = TColor.GetColor("#D8EBDD")
+
 
 # Text
 latex = TLatex()
@@ -64,7 +86,8 @@ line = TLine()
 line.SetLineColor(kGray+2)
 line.SetLineStyle(2)
 
-# Configurations
+
+# from compactify_cfg.py
 triggers = [
         # MET
         'HLT_DiCentralJetSumpT100_dPhi05_DiCentralPFJet60_25_PFMET100_HBHENoiseCleaned_v5',
@@ -119,33 +142,38 @@ optmetfilters = [
     "p_tobtecfakesFilters",
     ]
 
-imgdir = "figures_20131130/"  # for Torino workshop
-if not imgdir.endswith("/"):  imgdir += "/"
-
-sections = {}
-sections["overview"] = False
-sections["overview_prof"] = False
-sections["topology"] = False
-sections["topology_online"] = False
-sections["puremet"] = False
-sections["puremet_eff"] = True
-
 
 # ______________________________________________________________________________
-# Init
+# Configurations
 drawerInit = DrawerInit()
-wait = True
-if not wait:  gROOT.SetBatch(1)
-TH1.SetDefaultSumw2()
-
 tfile = TFile.Open("../bin/compactified.L1ETM40.0.root")
 #tfile = TFile.Open("../bin/compactified.0.root")
 tree = tfile.Events
 
+sections = {}
+sections["overview"] = False
+sections["overview_prof"] = False
+sections["topology"] = True
+sections["topology_online"] = True
+sections["puremet"] = False
+sections["puremet_eff"] = False
+sections["monojet"] = False
+sections["monojet_eff"] = False
+sections["inthepast"] = False
+sections["inthefuture"] = False
+
+#imgdir = "figures_20131130/"  # for Torino workshop
+imgdir = "figures_20131203/"
+if not imgdir.endswith("/"):  imgdir += "/"
+if gSystem.AccessPathName(imgdir):
+    gSystem.mkdir(imgdir)
+
+wait = True
+if not wait:  gROOT.SetBatch(1)
+
+
 # ______________________________________________________________________________
 # Overview
-
-
 if sections["overview"]:
 
     def prepare(variable):
@@ -171,7 +199,6 @@ if sections["overview"]:
         histos = []
         for i, p in enumerate(params):
             h = TH1F("h_"+p[0], "; "+binning[0], binning[1], binning[2], binning[3])
-            #h = TH1F("h_"+p[0], "; "+binning[0]+"; Events", binning[1], binning[2], binning[3])
             h.SetLineWidth(2)
             h.SetLineColor(p[1])
             h.SetMarkerColor(p[1])
@@ -188,26 +215,39 @@ if sections["overview"]:
                 fixOverflow(histos[i])
         return
 
-    def draw(params, histos, text, logy=False):
+    def draw(params, histos, ytitle="Events", text="Run2012D HLT_L1ETM40_v2", logy=False):
         ymax = getMaximum(histos)
         histos[0].SetMaximum(ymax * 1.5)
+        histos[0].GetYaxis().SetTitle(ytitle)
 
-        histos[1].SetFillStyle(3003)
+        histos[1].SetFillStyle(3004)
         histos[3].SetFillStyle(3003)
         histos[5].SetFillStyle(3003)
         histos[7].SetFillStyle(3003)
 
         histos[0].Draw("hist")
         histos[1].Draw("hist same")
-
         histos[6].Draw("hist same")
         histos[7].Draw("hist same")
-
         histos[4].Draw("hist same")
         histos[5].Draw("hist same")
-
         histos[2].Draw("hist same")
         histos[3].Draw("hist same")
+
+        gPad.SetLogy(logy)
+        gPad.RedrawAxis()
+        latex.DrawLatex(0.17, 0.97, text)
+        return
+
+    def draw_norm(params, histos, ytitle="Events", text="Run2012D HLT_L1ETM40_v2", logy=False):
+        ymax = getMaximum(histos)
+        histos[0].SetMaximum(ymax * 1.5)
+        histos[0].GetYaxis().SetTitle(ytitle)
+
+        histos[0].SetFillStyle(3004)
+        histos[1].SetFillStyle(3003)
+        histos[0].Draw("hist")
+        histos[1].Draw("hist same")
 
         gPad.SetLogy(logy)
         gPad.RedrawAxis()
@@ -236,12 +276,18 @@ if sections["overview"]:
         leg2.AddEntry(histos[5], "(no noise) #mu,#sigma = %.1f,%.1f" % (histos[5].GetMean(), histos[5].GetRMS()), "f")
         leg2.AddEntry(histos[7], "(no noise) #mu,#sigma = %.1f,%.1f" % (histos[7].GetMean(), histos[7].GetRMS()), "f")
         leg2.Draw()
-
         return (leg1, leg2)
 
-    def save(imgname):
-        gPad.Print(imgdir+imgname+".pdf")
-        gPad.Print(imgdir+imgname+".png")
+    def label_norm(histos, legend=(0.26,0.84,0.90,0.94)):
+        leg1 = TLegend(0.26,0.84,0.96,0.94)
+        leg1.SetFillStyle(0)
+        leg1.SetLineColor(0)
+        leg1.SetShadowColor(0)
+        leg1.SetBorderSize(0)
+        leg1.AddEntry(histos[0], "1 #leq #PV #leq 10 (no noise) #mu,#sigma = %.1f,%.1f" % (histos[0].GetMean(), histos[0].GetRMS()), "f")
+        leg1.AddEntry(histos[1], "25 #leq #PV #leq 35(no noise) #mu,#sigma = %.1f,%.1f" % (histos[1].GetMean(), histos[1].GetRMS()), "f")
+        leg1.Draw()
+        return (leg1)
 
     # nGoodPV
     variable = ("nGoodPV", "event.nGoodPV")
@@ -249,9 +295,9 @@ if sections["overview"]:
     params = prepare(variable)
     histos = book(params, binning)
     project(params, histos)
-    draw(params, histos, "Run2012D HLT_L1ETM40_v2")
+    draw(params, histos)
     legs = label(histos)
-    save("overview_"+variable[0])
+    save(imgdir, "overview_"+variable[0])
 
     # nJets
     variable = ("nJets", "Sum$(patJets.pt > 30 && abs(patJets.eta) < 2.5)")
@@ -259,9 +305,49 @@ if sections["overview"]:
     params = prepare(variable)
     histos = book(params, binning)
     project(params, histos)
-    draw(params, histos, "Run2012D HLT_L1ETM40_v2")
+    draw(params, histos)
     legs = label(histos)
-    save("overview_"+variable[0])
+    save(imgdir, "overview_"+variable[0])
+
+    # Jet 1 pT
+    variable = ("ptj1", "Alt$(patJets[0].pt, 0)")
+    binning = ("#scale[0.7]{RECO} jet 1 p_{T} [GeV]", 30, 0, 150)
+    params = prepare(variable)
+    histos = book(params, binning)
+    project(params, histos)
+    draw(params, histos)
+    legs = label(histos)
+    save(imgdir, "overview_"+variable[0])
+
+    # Jet 2 pT
+    variable = ("ptj2", "Alt$(patJets[1].pt, 0)")
+    binning = ("#scale[0.7]{RECO} jet 2 p_{T} [GeV]", 30, 0, 150)
+    params = prepare(variable)
+    histos = book(params, binning)
+    project(params, histos)
+    draw(params, histos)
+    legs = label(histos)
+    save(imgdir, "overview_"+variable[0])
+
+    # Jet 1 eta
+    variable = ("etaj1", "Alt$(patJets[0].eta, -99)")
+    binning = ("#scale[0.7]{RECO} jet 1 #eta", 20, -5, 5)
+    params = prepare(variable)
+    histos = book(params, binning)
+    project(params, histos)
+    draw(params, histos)
+    legs = label(histos)
+    save(imgdir, "overview_"+variable[0])
+
+    # Jet 2 eta
+    variable = ("etaj2", "Alt$(patJets[1].eta, -99)")
+    binning = ("#scale[0.7]{RECO} jet 2 #eta", 20, -5, 5)
+    params = prepare(variable)
+    histos = book(params, binning)
+    project(params, histos)
+    draw(params, histos)
+    legs = label(histos)
+    save(imgdir, "overview_"+variable[0])
 
     # HLT MET
     variable = ("hltCaloMET", "hltCaloMET.pt")
@@ -269,27 +355,27 @@ if sections["overview"]:
     params = prepare(variable)
     histos = book(params, binning)
     project(params, histos)
-    draw(params, histos, "Run2012D HLT_L1ETM40_v2")
+    draw(params, histos)
     legs = label(histos)
-    save("overview_"+variable[0])
+    save(imgdir, "overview_"+variable[0])
 
     variable = ("hltPFMET", "hltPFMET.pt")
     binning = ("#scale[0.7]{HLT} PFMET [GeV]", 30, 0, 150)
     params = prepare(variable)
     histos = book(params, binning)
     project(params, histos)
-    draw(params, histos, "Run2012D HLT_L1ETM40_v2")
+    draw(params, histos)
     legs = label(histos)
-    save("overview_"+variable[0])
+    save(imgdir, "overview_"+variable[0])
 
     variable = ("hltTrackMET", "hltTrackMET.pt")
     binning = ("#scale[0.7]{HLT} TrackMET [GeV]", 30, 0, 150)
     params = prepare(variable)
     histos = book(params, binning)
     project(params, histos)
-    draw(params, histos, "Run2012D HLT_L1ETM40_v2")
+    draw(params, histos)
     legs = label(histos)
-    save("overview_"+variable[0])
+    save(imgdir, "overview_"+variable[0])
 
     # RECO MET
     variable = ("recoPFMET", "recoPFMET.pt")
@@ -297,27 +383,27 @@ if sections["overview"]:
     params = prepare(variable)
     histos = book(params, binning)
     project(params, histos)
-    draw(params, histos, "Run2012D HLT_L1ETM40_v2")
+    draw(params, histos)
     legs = label(histos)
-    save("overview_"+variable[0])
+    save(imgdir, "overview_"+variable[0])
 
     variable = ("recoPFMETT1", "recoPFMETT1.pt")
     binning = ("#scale[0.7]{RECO} Type-1 PFMET [GeV]", 30, 0, 150)
     params = prepare(variable)
     histos = book(params, binning)
     project(params, histos)
-    draw(params, histos, "Run2012D HLT_L1ETM40_v2")
+    draw(params, histos)
     legs = label(histos)
-    save("overview_"+variable[0])
+    save(imgdir, "overview_"+variable[0])
 
     variable = ("recoPFMETT0T1", "recoPFMETT0T1.pt")
     binning = ("#scale[0.7]{RECO} Type-0+1 PFMET [GeV]", 30, 0, 150)
     params = prepare(variable)
     histos = book(params, binning)
     project(params, histos)
-    draw(params, histos, "Run2012D HLT_L1ETM40_v2")
+    draw(params, histos)
     legs = label(histos)
-    save("overview_"+variable[0])
+    save(imgdir, "overview_"+variable[0])
 
     # RECO MET variants
     variable = ("patMPT", "patMPT.pt")
@@ -325,32 +411,100 @@ if sections["overview"]:
     params = prepare(variable)
     histos = book(params, binning)
     project(params, histos)
-    draw(params, histos, "Run2012D HLT_L1ETM40_v2")
+    draw(params, histos)
     legs = label(histos)
-    save("overview_"+variable[0])
+    save(imgdir, "overview_"+variable[0])
 
     variable = ("recoPFMETMVA", "recoPFMETMVA.pt")
     binning = ("#scale[0.7]{RECO} MVA PFMET [GeV]", 30, 0, 150)
     params = prepare(variable)
     histos = book(params, binning)
     project(params, histos)
-    draw(params, histos, "Run2012D HLT_L1ETM40_v2")
+    draw(params, histos)
     legs = label(histos)
-    save("overview_"+variable[0])
+    save(imgdir, "overview_"+variable[0])
 
     variable = ("recoPFMETNoPU", "recoPFMETNoPU.pt")
     binning = ("#scale[0.7]{RECO} NoPU PFMET [GeV]", 30, 0, 150)
     params = prepare(variable)
     histos = book(params, binning)
     project(params, histos)
-    draw(params, histos, "Run2012D HLT_L1ETM40_v2")
+    draw(params, histos)
     legs = label(histos)
-    save("overview_"+variable[0])
+    save(imgdir, "overview_"+variable[0])
+
+    # Two pileup scenarios
+    sel = "(triggerFlags[%i])" % ireftrig
+    sel_noNoise = "(metfilterFlags[%i])" % len(metfilters)
+    sel_lowPU = "(1<=event.nGoodPV && event.nGoodPV<=10)"
+    sel_highPU = "(25<=event.nGoodPV && event.nGoodPV<=35)"
+
+
+    # HLT MET
+    variable = ("hltPFMET", "hltPFMET.pt")
+    binning = ("#scale[0.7]{HLT} PFMET [GeV]", 30, 0, 150)
+    params = [
+        (variable[0]+"_lowPU", kRed, kRed, variable[1], "*".join([sel, sel_lowPU, sel_noNoise])),
+        (variable[0]+"_highPU", kMaroon, kMaroon, variable[1], "*".join([sel, sel_highPU, sel_noNoise])),
+    ]
+    histos = book(params, binning)
+    project(params, histos, normalize=1)
+    draw_norm(params, histos, ytitle="(normalized)")
+    legs = label_norm(histos)
+    save(imgdir, "overview_norm_"+variable[0])
+
+    variable = ("hltTrackMET", "hltTrackMET.pt")
+    binning = ("#scale[0.7]{HLT} TrackMET [GeV]", 30, 0, 150)
+    params = [
+        (variable[0]+"_lowPU", kBlue, kBlue, variable[1], "*".join([sel, sel_lowPU, sel_noNoise])),
+        (variable[0]+"_highPU", kNavy, kNavy, variable[1], "*".join([sel, sel_highPU, sel_noNoise])),
+    ]
+    histos = book(params, binning)
+    project(params, histos, normalize=1)
+    draw_norm(params, histos, ytitle="(normalized)")
+    legs = label_norm(histos)
+    save(imgdir, "overview_norm_"+variable[0])
+
+    variable = ("recoPFMETT0T1", "recoPFMETT0T1.pt")
+    binning = ("#scale[0.7]{RECO} Type-0+1 PFMET [GeV]", 30, 0, 150)
+    params = [
+        (variable[0]+"_lowPU", kRed, kRed, variable[1], "*".join([sel, sel_lowPU, sel_noNoise])),
+        (variable[0]+"_highPU", kMaroon, kMaroon, variable[1], "*".join([sel, sel_highPU, sel_noNoise])),
+    ]
+    histos = book(params, binning)
+    project(params, histos, normalize=1)
+    draw_norm(params, histos, ytitle="(normalized)")
+    legs = label_norm(histos)
+    save(imgdir, "overview_norm_"+variable[0])
+
+    variable = ("patMPT", "patMPT.pt")
+    binning = ("#scale[0.7]{RECO} TrackMET [GeV]", 30, 0, 150)
+    params = [
+        (variable[0]+"_lowPU", kBlue, kBlue, variable[1], "*".join([sel, sel_lowPU, sel_noNoise])),
+        (variable[0]+"_highPU", kNavy, kNavy, variable[1], "*".join([sel, sel_highPU, sel_noNoise])),
+    ]
+    histos = book(params, binning)
+    project(params, histos, normalize=1)
+    draw_norm(params, histos, ytitle="(normalized)")
+    legs = label_norm(histos)
+    save(imgdir, "overview_norm_"+variable[0])
+
+    variable = ("recoPFMETMVA", "recoPFMETMVA.pt")
+    binning = ("#scale[0.7]{RECO} MVA PFMET [GeV]", 30, 0, 150)
+    params = [
+        (variable[0]+"_lowPU", kMagenta, kMagenta, variable[1], "*".join([sel, sel_lowPU, sel_noNoise])),
+        (variable[0]+"_highPU", kPurple2, kPurple2, variable[1], "*".join([sel, sel_highPU, sel_noNoise])),
+    ]
+    histos = book(params, binning)
+    project(params, histos, normalize=1)
+    draw_norm(params, histos, ytitle="(normalized)")
+    legs = label_norm(histos)
+    save(imgdir, "overview_norm_"+variable[0])
 
 
 if sections["overview_prof"]:
 
-    def book(params, binning):
+    def book(params, binning, option=""):
         histos = []
         for i, p in enumerate(params):
             h = TProfile("p_"+p[0], "; "+binning[0], binning[1], binning[2], binning[3], binning[4], binning[5])
@@ -359,16 +513,39 @@ if sections["overview_prof"]:
             h.SetMarkerColor(p[1])
             #h.SetFillColor(p[2])
             histos.append(h)
+        if "s" in option:
+            for h in histos:
+                h.SetErrorOption("s")
         return histos
 
     def project(params, histos):
         for i, p in enumerate(params):
+            # Error is standard error of the mean, e(J)  =  s(J)/sqrt(L(J))
             tree.Project("p_"+p[0], p[3], p[4], "prof goff")
         return
 
-    def draw(params, histos, text, logy=False):
-        histos[0].SetMinimum(1e-6)
-        histos[0].SetMinimum(1e2)
+    def rmserror(binning, histos):
+        hhistos = []
+        for h in histos:
+            hh = TH1F("h_"+h.GetName(), "; "+binning[0], binning[1], binning[2], binning[3])
+            hh.SetLineWidth(h.GetLineWidth())
+            hh.SetLineColor(h.GetLineColor())
+            hh.SetMarkerColor(h.GetMarkerColor())
+            #hh.SetFillColor(h.GetFillColor())
+            for b in xrange(1, h.GetNbinsX()+1):
+                err = h.GetBinError(b)
+                n = h.GetBinEffectiveEntries(b)
+                # This formula is only valid for normal distribution and unweighted entries
+                errerr = sqrt(2.0 * (err ** 4) / (n - 1))
+                hh.SetBinContent(b, err)
+                hh.SetBinError(b, errerr)
+            hhistos.append(hh)
+        return hhistos
+
+    def draw(params, histos, ytitle="Events", text="Run2012D HLT_L1ETM40_v2", logy=False, ymin=1e-6, ymax=1e2):
+        histos[0].SetMinimum(ymin)
+        histos[0].SetMaximum(ymax)
+        #histos[0].GetYaxis().SetTitle(ytitle)
 
         histos[0].Draw()
         for h in histos[1:]:
@@ -404,24 +581,21 @@ if sections["overview_prof"]:
         leg1.Draw()
         return leg1
 
-    def save(imgname):
-        gPad.Print(imgdir+imgname+".pdf")
-        gPad.Print(imgdir+imgname+".png")
-
     sel = "(triggerFlags[%i])" % ireftrig
     sel_noNoise = "(metfilterFlags[%i])" % len(metfilters)
 
+    # Mean
     params = [
         ("hltCaloMET"    , kBlack, kBlack, "hltCaloMET.pt:event.nGoodPV" , "*".join([sel, sel_noNoise])),
         ("hltPFMET"      , kRed  , kRed  , "hltPFMET.pt:event.nGoodPV"   , "*".join([sel, sel_noNoise])),
         ("hltTrackMET"   , kBlue , kBlue , "hltTrackMET.pt:event.nGoodPV", "*".join([sel, sel_noNoise])),
     ]
-    binning = ("#scale[0.7]{RECO} # good PVs; #scale[0.7]{HLT} <MET> [GeV]", 20, 0, 40, 0, 200)
+    binning = ("#scale[0.7]{RECO} # good PVs; #scale[0.7]{HLT} #mu_{MET} [GeV]", 20, 0, 40, 0, 200)
     histos = book(params, binning)
     project(params, histos)
-    draw(params, histos, "Run2012D HLT_L1ETM40_v2")
+    draw(params, histos, ymax=80)
     legs = label_HLT(histos)
-    save("overview_prof_hltMETs")
+    save(imgdir, "overview_prof_hltMETs")
 
     params = [
         ("recoPFMETT0T1", kRed     , kRed     , "recoPFMETT0T1.pt:event.nGoodPV" , "*".join([sel, sel_noNoise])),
@@ -429,14 +603,44 @@ if sections["overview_prof"]:
         ("recoPFMETMVA" , kMagenta2, kMagenta2, "recoPFMETMVA.pt:event.nGoodPV", "*".join([sel, sel_noNoise])),
         ("recoPFMETNoPU", kCyan2   , kCyan2   , "recoPFMETNoPU.pt:event.nGoodPV", "*".join([sel, sel_noNoise])),
     ]
-    binning = ("#scale[0.7]{RECO} # good PVs; #scale[0.7]{RECO} <MET> [GeV]", 20, 0, 40, 0, 200)
+    binning = ("#scale[0.7]{RECO} # good PVs; #scale[0.7]{RECO} #mu_{MET} [GeV]", 20, 0, 40, 0, 200)
     histos = book(params, binning)
     project(params, histos)
-    draw(params, histos, "Run2012D HLT_L1ETM40_v2")
+    draw(params, histos, ymax=80)
     legs = label_RECO(histos)
-    save("overview_prof_recoMETs")
+    save(imgdir, "overview_prof_recoMETs")
+
+    # Stdev
+    params = [
+        ("hltCaloMET"    , kBlack, kBlack, "hltCaloMET.pt:event.nGoodPV" , "*".join([sel, sel_noNoise])),
+        ("hltPFMET"      , kRed  , kRed  , "hltPFMET.pt:event.nGoodPV"   , "*".join([sel, sel_noNoise])),
+        ("hltTrackMET"   , kBlue , kBlue , "hltTrackMET.pt:event.nGoodPV", "*".join([sel, sel_noNoise])),
+    ]
+    binning = ("#scale[0.7]{RECO} # good PVs; #scale[0.7]{HLT} #sigma_{MET} [GeV]", 20, 0, 40, 0, 200)
+    histos = book(params, binning, option="s")
+    project(params, histos)
+    hhistos = rmserror(binning, histos)
+    draw(params, hhistos, ymax=40)
+    legs = label_HLT(histos)
+    save(imgdir, "overview_prof_sigma_hltMETs")
+
+    params = [
+        ("recoPFMETT0T1", kRed     , kRed     , "recoPFMETT0T1.pt:event.nGoodPV" , "*".join([sel, sel_noNoise])),
+        ("patMPT"       , kBlue    , kBlue    , "patMPT.pt:event.nGoodPV"   , "*".join([sel, sel_noNoise])),
+        ("recoPFMETMVA" , kMagenta2, kMagenta2, "recoPFMETMVA.pt:event.nGoodPV", "*".join([sel, sel_noNoise])),
+        ("recoPFMETNoPU", kCyan2   , kCyan2   , "recoPFMETNoPU.pt:event.nGoodPV", "*".join([sel, sel_noNoise])),
+    ]
+    binning = ("#scale[0.7]{RECO} # good PVs; #scale[0.7]{RECO} #sigma_{MET} [GeV]", 20, 0, 40, 0, 200)
+    histos = book(params, binning, option="s")
+    project(params, histos)
+    hhistos = rmserror(binning, histos)
+    draw(params, hhistos, ymax=40)
+    legs = label_RECO(histos)
+    save(imgdir, "overview_prof_sigma_recoMETs")
 
 
+# ______________________________________________________________________________
+# Topology
 if sections["topology"]:
 
     def prepare(variable):
@@ -478,12 +682,13 @@ if sections["topology"]:
                 fixOverflow(histos[i])
         return
 
-    def draw(params, histos, text, logy=False, zoom=False):
+    def draw(params, histos, ytitle="Events", text="Run2012D HLT_L1ETM40_v2", logy=False, zoom=False):
         ymax = getMaximum(histos)
         if zoom:
             histos[0].SetMaximum(ymax * 1.5 / 100)
         else:
             histos[0].SetMaximum(ymax * 1.5)
+        histos[0].GetYaxis().SetTitle(ytitle)
 
         histos[0].Draw("hist")
         histos[1].Draw("hist same")
@@ -514,39 +719,37 @@ if sections["topology"]:
         leg1.Draw()
         return (leg1)
 
-    def save(imgname):
-        gPad.Print(imgdir+imgname+".pdf")
-        gPad.Print(imgdir+imgname+".png")
-
+    # HLT MET
     variable = ("hltPFMET", "hltPFMET.pt")
     binning = ("#scale[0.7]{HLT} PFMET [GeV]", 30, 50, 200)
     params = prepare(variable)
     histos = book(params, binning)
     project(params, histos)
-    draw(params, histos, "Run2012D HLT_L1ETM40_v2")
+    draw(params, histos)
     legs = label(histos)
     latex.DrawLatex(0.56, 0.66, "categorized by jet topology (offline)")
-    save("topology_"+variable[0])
+    save(imgdir, "topology_"+variable[0])
 
-    draw(params, histos, "Run2012D HLT_L1ETM40_v2", zoom=True)
+    draw(params, histos, zoom=True)
     legs = label(histos)
     latex.DrawLatex(0.56, 0.66, "categorized by jet topology (offline)")
-    save("topology_"+variable[0]+"_zoom")
+    save(imgdir, "topology_"+variable[0]+"_zoom")
 
+    # RECO MET
     variable = ("recoPFMETT0T1", "recoPFMETT0T1.pt")
     binning = ("#scale[0.7]{RECO} Type-0+1 PFMET [GeV]", 30, 50, 200)
     params = prepare(variable)
     histos = book(params, binning)
     project(params, histos)
-    draw(params, histos, "Run2012D HLT_L1ETM40_v2")
+    draw(params, histos)
     legs = label(histos)
     latex.DrawLatex(0.56, 0.66, "categorized by jet topology (offline)")
-    save("topology_"+variable[0])
+    save(imgdir, "topology_"+variable[0])
 
-    draw(params, histos, "Run2012D HLT_L1ETM40_v2", zoom=True)
+    draw(params, histos, zoom=True)
     legs = label(histos)
     latex.DrawLatex(0.56, 0.66, "categorized by jet topology (offline)")
-    save("topology_"+variable[0]+"_zoom")
+    save(imgdir, "topology_"+variable[0]+"_zoom")
 
 
 if sections["topology_online"]:
@@ -602,12 +805,13 @@ if sections["topology_online"]:
                 fixOverflow(histos[i])
         return
 
-    def draw(params, histos, text, logy=False, zoom=False):
+    def draw(params, histos, ytitle="Events", text="Run2012D HLT_L1ETM40_v2", logy=False, zoom=False):
         ymax = getMaximum(histos)
         if zoom:
             histos[0].SetMaximum(ymax * 1.5 / 100)
         else:
             histos[0].SetMaximum(ymax * 1.5)
+        histos[0].GetYaxis().SetTitle(ytitle)
 
         histos[0].Draw("hist")
         histos[1].Draw("hist same")
@@ -640,41 +844,47 @@ if sections["topology_online"]:
         leg1.Draw()
         return (leg1)
 
-    def save(imgname):
-        gPad.Print(imgdir+imgname+".pdf")
-        gPad.Print(imgdir+imgname+".png")
-
+    # HLT MET
     variable = ("hltPFMET", "hltPFMET.pt")
     binning = ("#scale[0.7]{HLT} PFMET [GeV]", 30, 50, 200)
     params = prepare(variable)
     histos = book(params, binning)
     project(params, histos)
-    draw(params, histos, "Run2012D HLT_L1ETM40_v2")
+    draw(params, histos)
     legs = label(histos)
     latex.DrawLatex(0.56, 0.62, "categorized by MET trigger (online)")
-    save("topology_trigger_"+variable[0])
+    save(imgdir, "topology_trigger_"+variable[0])
 
-    draw(params, histos, "Run2012D HLT_L1ETM40_v2", zoom=True)
+    draw(params, histos, zoom=True)
     legs = label(histos)
     latex.DrawLatex(0.56, 0.62, "categorized by MET trigger (online)")
-    save("topology_trigger_"+variable[0]+"_zoom")
+    save(imgdir, "topology_trigger_zoom_"+variable[0])
 
+    # RECO MET
     variable = ("recoPFMETT0T1", "recoPFMETT0T1.pt")
     binning = ("#scale[0.7]{RECO} Type-0+1 PFMET [GeV]", 30, 50, 200)
     params = prepare(variable)
     histos = book(params, binning)
     project(params, histos)
-    draw(params, histos, "Run2012D HLT_L1ETM40_v2")
+    draw(params, histos)
     legs = label(histos)
-    latex.DrawLatex(0.56, 0.62, "categorized by MET trigger (online)")
-    save("topology_trigger_"+variable[0])
+    latex.DrawLatex(0.56, 0.62, "categorized by HLT trigger (online)")
+    save(imgdir, "topology_trigger_"+variable[0])
 
-    draw(params, histos, "Run2012D HLT_L1ETM40_v2", zoom=True)
+    draw(params, histos, zoom=True)
     legs = label(histos)
-    latex.DrawLatex(0.56, 0.62, "categorized by MET trigger (online)")
-    save("topology_trigger_"+variable[0]+"_zoom")
+    latex.DrawLatex(0.56, 0.62, "categorized by HLT trigger (online)")
+    save(imgdir, "topology_trigger_zoom_"+variable[0])
 
 
+# ______________________________________________________________________________
+if sections["inthepast"]:
+    pass
+
+if sections["inthefuture"]:
+    pass
+
+# ______________________________________________________________________________
 if sections["puremet"]:
 
     def book(params, binning):
@@ -699,13 +909,14 @@ if sections["puremet"]:
                 fixOverflow(histos[i])
         return
 
-    def draw(params, histos, text, logy=False, zoom=False):
+    def draw(params, histos, ytitle="Events", text="Run2012D HLT_L1ETM40_v2", logy=False, zoom=False):
         ymax = histos[2].GetMaximum()
         if zoom:
             histos[0].SetMaximum(ymax * 2.5 / 100)
         else:
             histos[0].SetMaximum(ymax * 2.5)
         histos[0].SetMinimum(0)
+        histos[0].GetYaxis().SetTitle(ytitle)
 
         histos[0].Draw("hist")
         for h in histos[1:]:
@@ -716,7 +927,8 @@ if sections["puremet"]:
         latex.DrawLatex(0.17, 0.97, text)
         return
 
-    def draw2(params, histos, text, logy=False):
+    def draw2(params, histos, ytitle="Events", text="Run2012D HLT_L1ETM40_v2", logy=False, zoom=False):
+        histos[0].GetYaxis().SetTitle(ytitle)
         histos[0].Draw("hist")
         for h in histos[1:]:
             h.Draw("hist same")
@@ -737,10 +949,6 @@ if sections["puremet"]:
         leg1.AddEntry(histos[2], "Inclusive", "f")
         leg1.Draw()
         return (leg1)
-
-    def save(imgname):
-        gPad.Print(imgdir+imgname+".pdf")
-        gPad.Print(imgdir+imgname+".png")
 
 
     sel = "(triggerFlags[%i])" % ireftrig
@@ -766,9 +974,9 @@ if sections["puremet"]:
     ]
     histos = book(params, binning)
     project(params, histos)
-    draw(params, histos, "Run2012D HLT_L1ETM40_v2")
+    draw(params, histos)
     legs = label(histos)
-    save("puremet_"+variable[0])
+    save(imgdir, "puremet_"+variable[0])
 
     # hltCaloMET
     variable = ("hltCaloMET", "hltCaloMET.pt")
@@ -781,10 +989,10 @@ if sections["puremet"]:
     ]
     histos = book(params, binning)
     project(params, histos)
-    draw(params, histos, "Run2012D HLT_L1ETM40_v2")
+    draw(params, histos)
     legs = label(histos)
     latex.DrawLatex(0.56, 0.78, "HLT PFMET > 150")
-    save("puremet_"+variable[0])
+    save(imgdir, "puremet_"+variable[0])
 
     # hltCaloMETClean
     variable = ("hltCaloMETClean", "hltCaloMETClean.pt")
@@ -797,10 +1005,10 @@ if sections["puremet"]:
     ]
     histos = book(params, binning)
     project(params, histos)
-    draw(params, histos, "Run2012D HLT_L1ETM40_v2")
+    draw(params, histos)
     legs = label(histos)
     latex.DrawLatex(0.56, 0.78, "HLT CaloMET > 80, PFMET > 150")
-    save("puremet_"+variable[0])
+    save(imgdir, "puremet_"+variable[0])
 
     # hltCaloMETCleanUsingJetID
     variable = ("hltCaloMETCleanUsingJetID", "hltCaloMETCleanUsingJetID.pt")
@@ -813,10 +1021,10 @@ if sections["puremet"]:
     ]
     histos = book(params, binning)
     project(params, histos)
-    draw(params, histos, "Run2012D HLT_L1ETM40_v2")
+    draw(params, histos)
     legs = label(histos)
     latex.DrawLatex(0.56, 0.78, "HLT CaloMET > 80, PFMET > 150")
-    save("puremet_"+variable[0])
+    save(imgdir, "puremet_"+variable[0])
 
     # hltTrackMET
     variable = ("hltTrackMET", "hltTrackMET.pt")
@@ -829,11 +1037,11 @@ if sections["puremet"]:
     ]
     histos = book(params, binning)
     project(params, histos)
-    draw(params, histos, "Run2012D HLT_L1ETM40_v2")
+    draw(params, histos)
     legs = label(histos)
     latex.DrawLatex(0.56, 0.78, "HLT CaloMET > 80, PFMET > 150,")
     latex.DrawLatex(0.56, 0.74, "HBHE+JetID cleaned")
-    save("puremet_"+variable[0])
+    save(imgdir, "puremet_"+variable[0])
 
     # hltTrackMETDPhi
     variable = ("hltTrackMETDPhi", "abs(deltaPhi(hltPFMET.phi,hltTrackMET.phi))")
@@ -846,11 +1054,11 @@ if sections["puremet"]:
     ]
     histos = book(params, binning)
     project(params, histos)
-    draw(params, histos, "Run2012D HLT_L1ETM40_v2")
+    draw(params, histos)
     legs = label(histos)
     latex.DrawLatex(0.56, 0.78, "HLT CaloMET > 80, PFMET > 150,")
     latex.DrawLatex(0.56, 0.74, "HBHE+JetID cleaned")
-    save("puremet_"+variable[0])
+    save(imgdir, "puremet_"+variable[0])
 
     # hltTrackMET_standalone
     variable = ("hltTrackMET", "hltTrackMET.pt")
@@ -864,7 +1072,7 @@ if sections["puremet"]:
     ]
     histos = book(params, binning)
     project(params, histos)
-    draw(params, histos, "Run2012D HLT_L1ETM40_v2")
+    draw(params, histos)
     leg1 = TLegend(0.52,0.78,0.96,0.94)
     leg1.SetFillStyle(0)
     leg1.SetLineColor(0)
@@ -876,7 +1084,7 @@ if sections["puremet"]:
     leg1.AddEntry(histos[2], "TrackMET > 90", "f")
     latex.DrawLatex(0.56, 0.74, "HLT CaloMET > 80")
     leg1.Draw()
-    save("puremet_trk_"+variable[0])
+    save(imgdir, "puremet_trk_"+variable[0])
 
     #___________________________________________________________________________
     # recoPFMETT0T1
@@ -893,7 +1101,7 @@ if sections["puremet"]:
     for h in histos:
         h.SetFillStyle(3003)
     project(params, histos)
-    draw2(params, histos, "Run2012D HLT_L1ETM40_v2")
+    draw2(params, histos)
     leg1 = TLegend(0.26,0.74,0.80,0.94)
     leg1.SetFillStyle(0)
     leg1.SetLineColor(0)
@@ -904,7 +1112,7 @@ if sections["puremet"]:
     leg1.AddEntry(histos[2], "+ JetIDCleaned (%.0f%% rate)" % ((histos[2].Integral() - histos[1].Integral())/histos[0].Integral() * 100))
     leg1.AddEntry(histos[3], "+ TrackMET > 15 (%.0f%% rate)" % ((histos[3].Integral() - histos[2].Integral())/histos[0].Integral() * 100))
     leg1.Draw()
-    save("puremet_"+variable[0])
+    save(imgdir, "puremet_"+variable[0])
 
     # recoPFMETMVA
     variable = ("recoPFMETMVA", "recoPFMETMVA.pt")
@@ -920,9 +1128,9 @@ if sections["puremet"]:
     for h in histos:
         h.SetFillStyle(3003)
     project(params, histos)
-    draw2(params, histos, "Run2012D HLT_L1ETM40_v2")
+    draw2(params, histos)
     leg1.Draw()
-    save("puremet_"+variable[0])
+    save(imgdir, "puremet_"+variable[0])
 
     # recoPFMETTOT1 for hltTrackMET standalone
     variable = ("recoPFMETT0T1", "recoPFMETT0T1.pt")
@@ -935,12 +1143,12 @@ if sections["puremet"]:
     histos = book(params, binning)
     project(params, histos)
     histos[0].SetMaximum(histos[1].GetMaximum())
-    draw2(params, histos, "Run2012D HLT_L1ETM40_v2")
+    draw2(params, histos)
     leg1.Clear()
     leg1.AddEntry(histos[0], "As is")
     leg1.AddEntry(histos[1], "As is || TrackMET > 90 (+%.0f%% rate)" % ((histos[1].Integral() - histos[0].Integral())/histos[0].Integral() * 100))
     leg1.Draw()
-    save("puremet_trk_"+variable[0])
+    save(imgdir, "puremet_trk_"+variable[0])
 
     addsel = "(hltCaloMETClean.pt>50 && hltCaloMETCleanUsingJetID.pt>50)"
     params = [
@@ -950,12 +1158,12 @@ if sections["puremet"]:
     histos = book(params, binning)
     project(params, histos)
     histos[0].SetMaximum(histos[1].GetMaximum())
-    draw2(params, histos, "Run2012D HLT_L1ETM40_v2")
+    draw2(params, histos)
     leg1.Clear()
     leg1.AddEntry(histos[0], "As is (HBHE+JetID cleaned)")
     leg1.AddEntry(histos[1], "#splitline{As is (HBHE+JetID cleaned) ||}{TrackMET > 90 (+%.0f%% rate)}" % ((histos[1].Integral() - histos[0].Integral())/histos[0].Integral() * 100))
     leg1.Draw()
-    save("puremet_trk_clean_"+variable[0])
+    save(imgdir, "puremet_trk_clean_"+variable[0])
 
 
 
@@ -982,13 +1190,12 @@ if sections["puremet_eff"]:
                 fixOverflow(histos[i])
         return
 
-    def draw(params, histos, text, logy=False, zoom=False):
+    def draw(params, histos, ytitle="Events", text="Run2012D HLT_L1ETM40_v2", logy=False, ymax=1.3, ymin=0.0):
         for h in histos[1:]:
             h.Divide(h, histos[0], 1, 1, "b")
 
-        ymax = 1.3
         histos[1].SetMaximum(ymax)
-        histos[1].SetMinimum(0)
+        histos[1].SetMinimum(ymin)
 
         histos[1].Draw("e1")
         histos[1].Draw("lhist same")
@@ -1027,11 +1234,6 @@ if sections["puremet_eff"]:
         leg1.Draw()
         return (leg1)
 
-    def save(imgname):
-        gPad.Print(imgdir+imgname+".pdf")
-        gPad.Print(imgdir+imgname+".png")
-
-
     sel = "(triggerFlags[%i])" % ireftrig
     sel_noNoise = "(metfilterFlags[%i])" % len(metfilters)
     sel_trig  = ("(triggerFlags[%i] || triggerFlags[%i])"
@@ -1061,10 +1263,10 @@ if sections["puremet_eff"]:
 
     histos = book(params, binning)
     project(params, histos)
-    draw(params, histos, "Run2012D HLT_L1ETM40_v2")
+    draw(params, histos)
     legs = label1(histos)
     line.DrawLine(0, 1, histos[0].GetBinLowEdge(histos[0].GetNbinsX()+1), 1)
-    save("puremet_eff_"+variable[0])
+    save(imgdir, "puremet_eff_"+variable[0])
 
     # recoPFMETMVA
     variable = ("recoPFMETMVA", "recoPFMETMVA.pt")
@@ -1081,10 +1283,10 @@ if sections["puremet_eff"]:
 
     histos = book(params, binning)
     project(params, histos)
-    draw(params, histos, "Run2012D HLT_L1ETM40_v2")
+    draw(params, histos)
     legs = label1(histos)
     line.DrawLine(0, 1, histos[0].GetBinLowEdge(histos[0].GetNbinsX()+1), 1)
-    save("puremet_eff_"+variable[0])
+    save(imgdir, "puremet_eff_"+variable[0])
 
     # recoPFMETT0T1
     variable = ("recoPFMETT0T1", "recoPFMETT0T1.pt")
@@ -1101,10 +1303,10 @@ if sections["puremet_eff"]:
 
     histos = book(params, binning)
     project(params, histos)
-    draw(params, histos, "Run2012D HLT_L1ETM40_v2")
+    draw(params, histos)
     legs = label2(histos)
     line.DrawLine(0, 1, histos[0].GetBinLowEdge(histos[0].GetNbinsX()+1), 1)
-    save("puremet_eff2_"+variable[0])
+    save(imgdir, "puremet_eff2_"+variable[0])
 
     # recoPFMETMVA
     variable = ("recoPFMETMVA", "recoPFMETMVA.pt")
@@ -1121,10 +1323,10 @@ if sections["puremet_eff"]:
 
     histos = book(params, binning)
     project(params, histos)
-    draw(params, histos, "Run2012D HLT_L1ETM40_v2")
+    draw(params, histos)
     legs = label2(histos)
     line.DrawLine(0, 1, histos[0].GetBinLowEdge(histos[0].GetNbinsX()+1), 1)
-    save("puremet_eff2_"+variable[0])
+    save(imgdir, "puremet_eff2_"+variable[0])
 
 
     # recoPFMETT0T1 for hltTrackMET_standalone
@@ -1141,7 +1343,7 @@ if sections["puremet_eff"]:
 
     histos = book(params, binning)
     project(params, histos)
-    draw(params, histos, "Run2012D HLT_L1ETM40_v2")
+    draw(params, histos)
     leg1 = TLegend(0.26,0.82,0.96,0.94)
     leg1.SetFillStyle(0)
     leg1.SetLineColor(0)
@@ -1152,7 +1354,7 @@ if sections["puremet_eff"]:
     leg1.AddEntry(histos[3], "As is || TrackMET > 90")
     leg1.Draw()
     line.DrawLine(0, 1, histos[0].GetBinLowEdge(histos[0].GetNbinsX()+1), 1)
-    save("puremet_eff_trk_"+variable[0])
+    save(imgdir, "puremet_eff_trk_"+variable[0])
 
     addsel = "(hltCaloMETClean.pt>50 && hltCaloMETCleanUsingJetID.pt>50)"
     params = [
@@ -1165,13 +1367,13 @@ if sections["puremet_eff"]:
 
     histos = book(params, binning)
     project(params, histos)
-    draw(params, histos, "Run2012D HLT_L1ETM40_v2")
+    draw(params, histos)
     leg1.Clear()
     leg1.AddEntry(histos[1], "As is (HBHE+JetID cleaned)")
     leg1.AddEntry(histos[2], "TrackMET > 90 (HBHE+JetID cleaned)")
     leg1.AddEntry(histos[3], "As is || TrackMET > 90 (HBHE+JetID cleaned)")
     leg1.Draw()
-    save("puremet_eff_trk_clean_"+variable[0])
+    save(imgdir, "puremet_eff_trk_clean_"+variable[0])
 
 
     # patMPT for hltTrackMET_standalone
@@ -1189,7 +1391,7 @@ if sections["puremet_eff"]:
 
     histos = book(params, binning)
     project(params, histos)
-    draw(params, histos, "Run2012D HLT_L1ETM40_v2")
+    draw(params, histos)
     leg1 = TLegend(0.26,0.78,0.96,0.94)
     leg1.SetFillStyle(0)
     leg1.SetLineColor(0)
@@ -1201,7 +1403,7 @@ if sections["puremet_eff"]:
     leg1.AddEntry(histos[4], "TrackMET > 90, no CaloMET cut")
     leg1.Draw()
     line.DrawLine(0, 1, histos[0].GetBinLowEdge(histos[0].GetNbinsX()+1), 1)
-    save("puremet_eff_trk_"+variable[0])
+    save(imgdir, "puremet_eff_trk_"+variable[0])
 
     addsel = "(hltCaloMETClean.pt>50 && hltCaloMETCleanUsingJetID.pt>50)"
     params = [
@@ -1215,12 +1417,11 @@ if sections["puremet_eff"]:
 
     histos = book(params, binning)
     project(params, histos)
-    draw(params, histos, "Run2012D HLT_L1ETM40_v2")
+    draw(params, histos)
     leg1.Clear()
     leg1.AddEntry(histos[1], "As is (HBHE+JetID cleaned)")
     leg1.AddEntry(histos[2], "TrackMET > 90 (HBHE+JetID cleaned)")
     leg1.AddEntry(histos[3], "As is || TrackMET > 90 (HBHE+JetID cleaned)")
     leg1.AddEntry(histos[4], "TrackMET > 90, no CaloMET cut (HBHE+JetID cleaned)")
     leg1.Draw()
-    save("puremet_eff_trk_clean_"+variable[0])
-
+    save(imgdir, "puremet_eff_trk_clean_"+variable[0])
