@@ -16,6 +16,7 @@
 #pragma link C++ class simple::PFJet+;
 #pragma link C++ class std::vector<simple::PFJet>+;
 #pragma link C++ class simple::MET+;
+#pragma link C++ class simple::Global+;
 #pragma link C++ class simple::Event+;
 
 #endif

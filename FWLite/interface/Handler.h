@@ -32,6 +32,7 @@
 //#include "DataFormats/TauReco/interface/PFTauFwd.h"
 //#include "DataFormats/JetReco/interface/PFJet.h"
 //#include "DataFormats/JetReco/interface/PFJetCollection.h"
+#include "DataFormats/BTauReco/interface/JetTag.h"
 // PAT
 #include "DataFormats/ParticleFlowReco/interface/PFRecTrack.h"
 #include "DataFormats/PatCandidates/interface/Electron.h"
@@ -92,8 +93,9 @@ class Handler {
         getByLabel(iEvent, "hltCaloMETCleansUsingJetID", hltCaloMETCleansUsingJetID);
         getByLabel(iEvent, "hltPFMETs", hltPFMETs);
         getByLabel(iEvent, "hltPFMETsNoMu", hltPFMETsNoMu);
+        getByLabel(iEvent, "hltPFMETCleansUsingJetID", hltPFMETCleansUsingJetID);
         getByLabel(iEvent, "hltTrackMETs", hltTrackMETs);
-        getByLabel(iEvent, "hltHTMHTs", hltHTMHTs);
+        getByLabel(iEvent, "hltCaloHTMHTs", hltCaloHTMHTs);
         getByLabel(iEvent, "hltPFHTMHTs", hltPFHTMHTs);
         getByLabel(iEvent, "hltPFHTMHTsNoPU", hltPFHTMHTsNoPU);
         getByLabel(iEvent, "hltMuons", hltMuons);
@@ -104,6 +106,7 @@ class Handler {
         getByLabel(iEvent, "hltPFJetsL1FastL2L3NoPU", hltPFJetsL1FastL2L3NoPU);
         getByLabel(iEvent, "hltPFRecTracks", hltPFRecTracks);
         getByLabel(iEvent, "hltVertices", hltVertices);
+        getByLabel(iEvent, "hltCSVBJetTags", hltCSVBJetTags);
         getByLabel(iEvent, "hltRho_kt6CaloJets", hltRho_kt6CaloJets);
         getByLabel(iEvent, "hltRho_kt6PFJets", hltRho_kt6PFJets);
         getByLabel(iEvent, "recoTracks", recoTracks);
@@ -161,8 +164,9 @@ class Handler {
     edm::Handle<std::vector<reco::CaloMET      > > hltCaloMETCleansUsingJetID;
     edm::Handle<std::vector<reco::MET          > > hltPFMETs;
     edm::Handle<std::vector<reco::MET          > > hltPFMETsNoMu;
+    edm::Handle<std::vector<reco::MET          > > hltPFMETCleansUsingJetID;
     edm::Handle<std::vector<reco::MET          > > hltTrackMETs;
-    edm::Handle<std::vector<reco::MET          > > hltHTMHTs;
+    edm::Handle<std::vector<reco::MET          > > hltCaloHTMHTs;
     edm::Handle<std::vector<reco::MET          > > hltPFHTMHTs;
     edm::Handle<std::vector<reco::MET          > > hltPFHTMHTsNoPU;
     edm::Handle<std::vector<reco::Muon         > > hltMuons;
@@ -173,6 +177,7 @@ class Handler {
     edm::Handle<std::vector<reco::PFJet        > > hltPFJetsL1FastL2L3NoPU;
     edm::Handle<std::vector<reco::PFRecTrack   > > hltPFRecTracks;
     edm::Handle<std::vector<reco::Vertex       > > hltVertices;
+    edm::Handle<reco::JetTagCollection           > hltCSVBJetTags;
     edm::Handle<double                           > hltRho_kt6CaloJets;
     edm::Handle<double                           > hltRho_kt6PFJets;
 

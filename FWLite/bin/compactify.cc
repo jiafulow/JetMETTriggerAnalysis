@@ -19,6 +19,8 @@
 #include "JetMETTriggerAnalysis/FWLite/interface/Handler.h"
 #include "JetMETTriggerAnalysis/FWLite/interface/JSONFilter.h"
 #include "JetMETTriggerAnalysis/FWLite/interface/JetIDHelper.h"
+
+typedef reco::Candidate::LorentzVector FourVector;
 #endif
 
 #ifndef M_PI
@@ -126,6 +128,7 @@ void simple_fill(const T& cand, bool jetID, simple::PFJet& simple) {
     simple.jetID  = jetID;
     simple.chf    = cand.chargedHadronEnergyFraction();
     simple.nhf    = cand.neutralHadronEnergyFraction() + cand.HFHadronEnergyFraction();
+    //simple.nhf    = cand.neutralHadronEnergyFraction();  // used by HLTPFEnergyFractionsFilter.h
     simple.cef    = cand.chargedEmEnergyFraction();
     simple.nef    = cand.neutralEmEnergyFraction();
     simple.nch    = cand.chargedMultiplicity();
@@ -160,10 +163,27 @@ void simple_fill(const edm::EventBase& iEvent, unsigned int nPV,
 //______________________________________________________________________________
 // Functions
 template<typename T>
-unsigned int count_jets(const std::vector<T>& jets, double ptmin, double etamax) {
+unsigned int eval_maxpt_idx(const std::vector<T>& jets, double ptmin, double etamax) {  // no jetID
+    unsigned int idx = 0;
+    double maxpt = -99.;
+    for (unsigned int j = 0; j < jets.size(); ++j) {
+        const T& jet = jets.at(j);
+        if (jet.pt() > ptmin && fabs(jet.eta()) < etamax) {
+            if (maxpt < jet.pt()) {
+                idx = j;
+                maxpt = jet.pt();
+            }
+        }
+    }
+    return idx;
+}
+
+template<typename T>
+unsigned int eval_njets(const std::vector<T>& jets, double ptmin, double etamax) {  // no jetID
     unsigned int count = 0;
     for (unsigned int j = 0; j < jets.size(); ++j) {
-        if (jets.at(j).pt() > ptmin && fabs(jets.at(j).eta()) < etamax) {
+        const T& jet = jets.at(j);
+        if (jet.pt() > ptmin && fabs(jet.eta()) < etamax) {
             ++count;
         }
     }
@@ -171,7 +191,7 @@ unsigned int count_jets(const std::vector<T>& jets, double ptmin, double etamax)
 }
 
 template<typename T>
-double eval_ht(const std::vector<T>& jets, double ptmin, double etamax) {
+double eval_ht(const std::vector<T>& jets, double ptmin, double etamax) {  // no jetID
     double ht = 0.0;
     for (unsigned int j = 0; j < jets.size(); ++j) {
         const T& jet = jets.at(j);
@@ -183,11 +203,24 @@ double eval_ht(const std::vector<T>& jets, double ptmin, double etamax) {
 }
 
 template<typename T>
-double eval_mindphi(double metphi, const std::vector<T>& jets, double ptmin, double etamax) {
+FourVector eval_mht(const std::vector<T>& jets, double ptmin, double etamax) {  // no jetID
+    FourVector mht(0., 0., 0., 0.);
+    for (unsigned int j = 0; j < jets.size(); ++j) {
+        const T& jet = jets.at(j);
+        if (jet.pt() > ptmin && fabs(jet.eta()) < etamax) {
+            mht -= jets.at(j).p4();
+        }
+    }
+    return mht;
+}
+
+template<typename T>
+double eval_mindphi(double metphi, const std::vector<T>& jets, double ptmin, double etamax) {  // no jetID
     double mindphi = M_PI;
     for (unsigned int j = 0; j < jets.size(); ++j) {
-        if (jets.at(j).pt() > ptmin && fabs(jets.at(j).eta()) < etamax) {
-            double dphi = fabs(reco::deltaPhi(jets.at(j).phi(), metphi));
+        const T& jet = jets.at(j);
+        if (jet.pt() > ptmin && fabs(jet.eta()) < etamax) {
+            double dphi = fabs(reco::deltaPhi(jet.phi(), metphi));
             if (mindphi > dphi)
                 mindphi = dphi;
         }
@@ -196,15 +229,117 @@ double eval_mindphi(double metphi, const std::vector<T>& jets, double ptmin, dou
 }
 
 template<typename T>
-reco::Candidate::LorentzVector build_met(const std::vector<T>& particles, double ptmin, double etamax) {
-    reco::Candidate::LorentzVector met(0,0,0,0);
-    for (unsigned int j = 0; j < particles.size(); ++j) {
-        const T& particle = particles.at(j);
-        if (particle.pt() > ptmin && fabs(particle.eta()) < etamax) {
-            met -= particle.p4();
+std::vector<double> eval_maxcsv(const std::vector<T>& jets, double ptmin, double etamax) {
+    std::vector<double> results(2, -99.);
+
+    std::vector<double> values;
+    for (unsigned int j = 0; j < jets.size(); ++j) {
+        const T& jet = jets.at(j);
+        if (jet.pt() > ptmin && fabs(jet.eta()) < etamax) {
+            const pat::Jet* patJet = dynamic_cast<const pat::Jet*>(&jet);
+            double csv = (patJet != 0 ? patJet->bDiscriminator("combinedSecondaryVertexBJetTags") : -999);
+            values.push_back(csv);
         }
     }
-    return met;
+    std::sort(values.begin(), values.end(), std::greater<double>());
+
+    if (values.size() > 0)
+        results[0] = values[0];
+    if (values.size() > 1)
+        results[1] = values[1];
+    return results;
+}
+
+template<typename T>
+std::vector<double> eval_maxcsv(const edm::AssociationVector<edm::RefToBaseProd<T>, std::vector<float> >& tags, double ptmin, double etamax) {
+    std::vector<double> results(2, -99.);
+
+    std::vector<double> values;
+    //typename edm::AssociationVector<edm::RefToBaseProd<T>, std::vector<float> >::const_iterator tag;
+    //for (tag = tags.begin(); tag != tags.end(); ++tag) {
+    //    if (tag->first->pt() > ptmin && fabs(tag->first->eta()) < etamax) {
+    //        double csv = tag->second;
+    //        values.push_back(csv);
+    //    }
+    //}
+    for (unsigned int i = 0; i < tags.size(); ++i) {  //FIXME: forgot to store the product
+        double csv = tags.value(i);
+        values.push_back(csv);
+    }
+    std::sort(values.begin(), values.end(), std::greater<double>());
+
+    if (values.size() > 0)
+        results[0] = values[0];
+    if (values.size() > 1)
+        results[1] = values[1];
+    return results;
+}
+
+template<typename T>
+std::vector<double> eval_maxmjj(const std::vector<T>& jets, double ptmin, double etamax, double minmjj, double mindeta, bool checkEtaOpposite, bool leadingJetOnly) {  // no jetID
+    std::vector<double> results(2, -99.);  // mjj, deta
+    double maxsumpt = -99;  // scalar sum
+
+    if (jets.size() >= 2) {
+        for (unsigned int j = 0; j < jets.size()-1; ++j) {
+            if (leadingJetOnly && j!=0)  break;
+            const T& jet = jets.at(j);
+            if (jet.pt() > ptmin && fabs(jet.eta()) < etamax) {
+
+                for (unsigned int k = j+1; k < jets.size(); ++k) {
+                    if (leadingJetOnly && k!=1)  break;
+                    const T& ket = jets.at(k);
+                    if (ket.pt() > ptmin && fabs(ket.eta()) < etamax) {
+                        double deta = fabs(jet.eta() - ket.eta());
+                        double mjj = (jet.p4() + ket.p4()).mass();
+                        double sumpt = jet.pt() + ket.pt();
+                        bool etaOpposite = (jet.eta()*ket.eta() < 0);
+
+                        if ( (maxsumpt < sumpt) &&
+                             ((checkEtaOpposite && etaOpposite) || !checkEtaOpposite) &&
+                             (deta > mindeta) &&
+                             (mjj > minmjj) ) {
+
+                            maxsumpt = sumpt;
+                            results[0] = mjj;
+                            results[1] = deta;
+                        }
+                    }
+                }  // end for loop
+            }
+        }  // end for loop
+    }
+    return results;
+}
+
+template<typename T>
+std::vector<double> eval_maxptjj(const std::vector<T>& jets, double ptmin, double etamax) {  // no jetID
+    std::vector<double> results(2, -99.);  // ptjj, mjj
+    double maxptjj = -99;  // vectorial sum
+
+    if (jets.size() >= 2) {
+        for (unsigned int j = 0; j < jets.size()-1; ++j) {
+            const T& jet = jets.at(j);
+            if (jet.pt() > ptmin && fabs(jet.eta()) < etamax) {
+
+                for (unsigned int k = j+1; k < jets.size(); ++k) {
+                    const T& ket = jets.at(k);
+                    if (ket.pt() > ptmin && fabs(ket.eta()) < etamax) {
+                        double mjj = (jet.p4() + ket.p4()).mass();
+                        double ptjj = (jet.p4() + ket.p4()).pt();
+
+                        if (maxptjj < ptjj) {
+                            maxptjj = ptjj;
+                            results[0] = ptjj;
+                            results[1] = mjj;
+                        }
+                    }
+                }  // end for loop
+
+            }
+        }  // end for loop
+    }
+    return results;
 }
 
 template<typename T>
@@ -224,8 +359,6 @@ int main(int argc, char *argv[]) {
     AutoLibraryLoader::enable();
     //gSystem->Load("libDataFormatsFWLite");
 
-    // Generate libraries
-    //gInterpreter->GenerateDictionary("simple::MET", "JetMETTriggerAnalysis/FWLite/interface/simple::Candidate.h");
 
     // Load config file
     if (argc < 2) {
@@ -320,11 +453,13 @@ int main(int argc, char *argv[]) {
     simple::MET hltCaloMETCleanUsingJetID;
     simple::MET hltPFMET;
     simple::MET hltPFMETNoMu;
+    simple::MET hltPFMETCleanUsingJetID;
     simple::MET hltTrackMET;
-    simple::MET hltHTMHT;
+    simple::MET hltCaloHTMHT;
     simple::MET hltPFHTMHT;
     simple::MET hltPFHTMHTNoPU;
-    double hltRho_kt6CaloJets, hltRho_kt6PFJets;
+    simple::Global hltCaloGlobal;
+    simple::Global hltPFGlobal;
     unsigned int lumilevel;
     // non-HLT
     std::vector<simple::Particle> recoPFCandidates;
@@ -336,12 +471,13 @@ int main(int argc, char *argv[]) {
     simple::MET recoPFMETNoPU;
     simple::MET patMET;
     simple::MET patMPT;
-    double recoRho_kt6CaloJets, recoRho_kt6PFJets;
-    unsigned int topo_patJets;
+    simple::MET patHTMHT;
+    simple::Global patGlobal;
+    unsigned int patJetTopo;
 
 
     TFile* outfile = new TFile(outfilename, "RECREATE");
-    TTree* outtree = new TTree("Events", "Events");
+    TTree* outtree = new TTree("tree", "tree");
     outtree->Branch("event", &simpleEvent);
     outtree->Branch("weightGenEvent", &weightGenEvent);
     outtree->Branch("weightPU", &weightPU);  //FIXME not yet set
@@ -352,7 +488,7 @@ int main(int argc, char *argv[]) {
     // HLT
     outtree->Branch("hltPFCandidates", &hltPFCandidates);
     outtree->Branch("hltCaloJets", &hltCaloJets);
-    outtree->Branch("hltCaloJetsL1Fast", & hltCaloJetsL1Fast);
+    outtree->Branch("hltCaloJetsL1Fast", &hltCaloJetsL1Fast);
     outtree->Branch("hltPFJets", &hltPFJets);
     outtree->Branch("hltPFJetsNoPU", &hltPFJetsNoPU);
     outtree->Branch("hltPFJetsL1FastL2L3", &hltPFJetsL1FastL2L3);
@@ -362,12 +498,13 @@ int main(int argc, char *argv[]) {
     outtree->Branch("hltCaloMETCleanUsingJetID", &hltCaloMETCleanUsingJetID);
     outtree->Branch("hltPFMET", &hltPFMET);
     outtree->Branch("hltPFMETNoMu", &hltPFMETNoMu);
+    outtree->Branch("hltPFMETCleanUsingJetID", &hltPFMETCleanUsingJetID);
     outtree->Branch("hltTrackMET", &hltTrackMET);
-    outtree->Branch("hltHTMHT", &hltHTMHT);
+    outtree->Branch("hltCaloHTMHT", &hltCaloHTMHT);
     outtree->Branch("hltPFHTMHT", &hltPFHTMHT);
     outtree->Branch("hltPFHTMHTNoPU", &hltPFHTMHTNoPU);
-    outtree->Branch("hltRho_kt6CaloJets", &hltRho_kt6CaloJets);
-    outtree->Branch("hltRho_kt6PFJets", &hltRho_kt6PFJets);
+    outtree->Branch("hltCaloGlobal", &hltCaloGlobal);
+    outtree->Branch("hltPFGlobal", &hltPFGlobal);
     outtree->Branch("lumilevel", &lumilevel);
     // non-HLT
     outtree->Branch("recoPFCandidates", &recoPFCandidates);
@@ -379,9 +516,9 @@ int main(int argc, char *argv[]) {
     outtree->Branch("recoPFMETNoPU", &recoPFMETNoPU);
     outtree->Branch("patMET", &patMET);
     outtree->Branch("patMPT", &patMPT);
-    outtree->Branch("recoRho_kt6CaloJets", &recoRho_kt6CaloJets);
-    outtree->Branch("recoRho_kt6PFJets", &recoRho_kt6PFJets);
-    outtree->Branch("topo_patJets", &topo_patJets);
+    outtree->Branch("patHTMHT", &patHTMHT);
+    outtree->Branch("patGlobal", &patGlobal);
+    outtree->Branch("patJetTopo", &patJetTopo);
 
 
     //__________________________________________________________________________
@@ -541,7 +678,7 @@ int main(int argc, char *argv[]) {
             simple::PFJet simple;
             bool jetID = hltJetIDHelper(jet);
             simple_fill(jet, jetID, simple);
-            hltPFJetsL1FastL2L3.push_back(simple);
+            hltPFJetsL1FastL2L3NoPU.push_back(simple);
         }
 
         //______________________________________________________________________
@@ -570,14 +707,19 @@ int main(int argc, char *argv[]) {
         simple_fill(handler.hltPFMETsNoMu->at(0), hltPFMETNoMu);
 
         //______________________________________________________________________
+        // hltPFMETCleanUsingJetID
+        if (verbose)  std::cout << "compactify: Begin filling hltPFMETCleanUsingJetID..." << std::endl;
+        simple_fill(handler.hltPFMETCleansUsingJetID->at(0), hltPFMETCleanUsingJetID);
+
+        //______________________________________________________________________
         // hltTrackMET
         if (verbose)  std::cout << "compactify: Begin filling hltTrackMET..." << std::endl;
         simple_fill(handler.hltTrackMETs->at(0), hltTrackMET);
 
         //______________________________________________________________________
-        // hltHTMHT
-        if (verbose)  std::cout << "compactify: Begin filling hltHTMHT..." << std::endl;
-        simple_fill(handler.hltHTMHTs->at(0), hltHTMHT);
+        // hltCaloHTMHT
+        if (verbose)  std::cout << "compactify: Begin filling hltCaloHTMHT..." << std::endl;
+        simple_fill(handler.hltCaloHTMHTs->at(0), hltCaloHTMHT);
 
         //______________________________________________________________________
         // hltPFHTMHT
@@ -590,10 +732,53 @@ int main(int argc, char *argv[]) {
         simple_fill(handler.hltPFHTMHTsNoPU->at(0), hltPFHTMHTNoPU);
 
         //______________________________________________________________________
-        // hltRhos
-        if (verbose)  std::cout << "compactify: Begin filling hltRhos..." << std::endl;
-        hltRho_kt6CaloJets = *(handler.hltRho_kt6CaloJets);
-        hltRho_kt6PFJets = *(handler.hltRho_kt6PFJets);
+        // hltCaloGlobal
+        if (verbose)  std::cout << "compactify: Begin filling hltCaloGlobal..." << std::endl;
+        std::vector<double> hltCaloGlobal_results;
+        hltCaloGlobal.monojet_maxpt_idx  = eval_maxpt_idx(*handler.hltCaloJetsL1Fast, 80., 2.6);
+        hltCaloGlobal_results            = eval_maxptjj(*handler.hltCaloJetsL1Fast, 15., 2.6);
+        hltCaloGlobal.dijet_maxpt        = hltCaloGlobal_results[0];
+        hltCaloGlobal.dijet_maxpt_mjj    = hltCaloGlobal_results[1];
+        hltCaloGlobal.dijet_mindphi_j30  = eval_mindphi(hltCaloMET.phi, *handler.hltCaloJetsL1Fast, 30., 5.0);
+        hltCaloGlobal.dijet_mindphi_j40  = eval_mindphi(hltCaloMET.phi, *handler.hltCaloJetsL1Fast, 40., 5.0);
+        hltCaloGlobal.dijet_mindphi_cj30 = eval_mindphi(hltCaloMET.phi, *handler.hltCaloJetsL1Fast, 30., 2.6);
+        hltCaloGlobal.dijet_mindphi_cj40 = eval_mindphi(hltCaloMET.phi, *handler.hltCaloJetsL1Fast, 40., 2.6);
+        hltCaloGlobal_results            = eval_maxcsv(*handler.hltCSVBJetTags, 20., 2.6);
+        hltCaloGlobal.bjet_maxcsv        = hltCaloGlobal_results[0];
+        hltCaloGlobal.bjet_maxcsv2       = hltCaloGlobal_results[1];
+        hltCaloGlobal_results            = eval_maxmjj(*handler.hltCaloJetsL1Fast, 30., 5.0, 500., 3.5, true, false);
+        hltCaloGlobal.vbf_maxmjj         = hltCaloGlobal_results[0];
+        hltCaloGlobal.vbf_maxmjj_deta    = hltCaloGlobal_results[1];
+        hltCaloGlobal_results            = eval_maxmjj(*handler.hltCaloJetsL1Fast, 30., 5.0, 500., 3.5, true, true);
+        hltCaloGlobal.vbf_leadmjj        = hltCaloGlobal_results[0];
+        hltCaloGlobal.vbf_leadmjj_deta   = hltCaloGlobal_results[1];
+        hltCaloGlobal.rho_kt6            = *handler.hltRho_kt6CaloJets;
+        hltCaloGlobal.njets_j30          = eval_njets(*handler.hltCaloJetsL1Fast, 30., 5.0);
+        hltCaloGlobal.njets_cj30         = eval_njets(*handler.hltCaloJetsL1Fast, 30., 2.5);
+
+        //______________________________________________________________________
+        // hltPFGlobal
+        if (verbose)  std::cout << "compactify: Begin filling hltPFGlobal..." << std::endl;
+        std::vector<double> hltPFGlobal_results;
+        hltPFGlobal.monojet_maxpt_idx  = eval_maxpt_idx(*handler.hltPFJetsL1FastL2L3, 80., 2.6);
+        hltPFGlobal_results            = eval_maxptjj(*handler.hltPFJetsL1FastL2L3, 25., 2.6);
+        hltPFGlobal.dijet_maxpt        = hltPFGlobal_results[0];
+        hltPFGlobal.dijet_maxpt_mjj    = hltPFGlobal_results[1];
+        hltPFGlobal.dijet_mindphi_j30  = eval_mindphi(hltPFMET.phi, *handler.hltPFJetsL1FastL2L3, 30., 5.0);
+        hltPFGlobal.dijet_mindphi_j40  = eval_mindphi(hltPFMET.phi, *handler.hltPFJetsL1FastL2L3, 40., 5.0);
+        hltPFGlobal.dijet_mindphi_cj30 = eval_mindphi(hltPFMET.phi, *handler.hltPFJetsL1FastL2L3, 30., 2.6);
+        hltPFGlobal.dijet_mindphi_cj40 = eval_mindphi(hltPFMET.phi, *handler.hltPFJetsL1FastL2L3, 40., 2.6);
+        hltPFGlobal.bjet_maxcsv        = -99.;
+        hltPFGlobal.bjet_maxcsv2       = -99.;
+        hltPFGlobal_results            = eval_maxmjj(*handler.hltPFJetsL1FastL2L3, 40., 5.0, 500., 3.5, true, false);  // should be 600
+        hltPFGlobal.vbf_maxmjj         = hltPFGlobal_results[0];
+        hltPFGlobal.vbf_maxmjj_deta    = hltPFGlobal_results[1];
+        hltPFGlobal_results            = eval_maxmjj(*handler.hltPFJetsL1FastL2L3, 40., 5.0, 500., 3.5, true, true);  // should be 600
+        hltPFGlobal.vbf_leadmjj        = hltPFGlobal_results[0];
+        hltPFGlobal.vbf_leadmjj_deta   = hltPFGlobal_results[1];
+        hltPFGlobal.rho_kt6            = *handler.hltRho_kt6PFJets;
+        hltPFGlobal.njets_j30          = eval_njets(*handler.hltPFJetsL1FastL2L3, 30., 5.0);
+        hltPFGlobal.njets_cj30         = eval_njets(*handler.hltPFJetsL1FastL2L3, 30., 2.5);
 
         //______________________________________________________________________
         // lumilevel
@@ -668,7 +853,9 @@ int main(int argc, char *argv[]) {
         if (verbose)  std::cout << "compactify: Begin filling patMET..." << std::endl;
         simple_fill(handler.patMETs->at(0), patMET);
 
-        reco::PFCandidate::LorentzVector patMPT_p4(0,0,0,0);
+        //______________________________________________________________________
+        // patMPT
+        FourVector patMPT_p4(0,0,0,0);
         double patMPT_sumEt = 0.;
         for (unsigned int i = 0; i < handler.recoPFCandidates->size(); ++i) {
             const reco::PFCandidate& cand = handler.recoPFCandidates->at(i);
@@ -685,53 +872,50 @@ int main(int argc, char *argv[]) {
         patMPT.sumEt  = patMPT_sumEt;
 
         //______________________________________________________________________
-        // recoRhos
-        if (verbose)  std::cout << "compactify: Begin filling recoRhos..." << std::endl;
-        recoRho_kt6CaloJets = *(handler.recoRho_kt6CaloJets);
-        recoRho_kt6PFJets = *(handler.recoRho_kt6PFJets);
-
-        //______________________________________________________________________
-        // topo_patJets
-        if (verbose)  std::cout << "compactify: Begin filling topo_patJets..." << std::endl;
-        topo_patJets = 0;
+        // patHTMHT
+        FourVector patHTMHT_p4(0,0,0,0);
+        double patHTMHT_sumEt = 0.;
         for (unsigned int i = 0; i < handler.patJets->size(); ++i) {
             const pat::Jet& jet = handler.patJets->at(i);
-            if (jet.pt() < 30 || fabs(jet.eta()) > 2.5)  continue;
-            topo_patJets += 1;
-        }
-        if (topo_patJets > 2)
-            topo_patJets = 2;
-
-        // Check for HT
-        if (handler.patJets->size() >= 1) {
-            double ht_patJets = 0.;
-            for (unsigned int i = 0; i < handler.patJets->size(); ++i) {
-                const pat::Jet& jet = handler.patJets->at(i);
-                if (jet.pt() < 40 || fabs(jet.eta()) > 3)  continue;
-                ht_patJets += jet.pt();
+            bool jetID = jetIDHelper(jet);
+            if (jet.pt() > 30 && fabs(jet.eta()) < 5.0 && jetID) {  // RA1, RA2 definition
+                patHTMHT_p4 -= jet.p4();
             }
-            if (ht_patJets > 300)
-                topo_patJets = 3;
-        }
-
-        // Check for VBF
-        if (handler.patJets->size() >= 2) {
-            for (unsigned int i = 0; i < handler.patJets->size()-1; ++i) {
-                const pat::Jet& jet1 = handler.patJets->at(i);
-                if (jet1.pt() < 30 || fabs(jet1.eta()) > 4.7)  continue;
-
-                for (unsigned int j = i+1; j < handler.patJets->size(); ++j) {
-                    const pat::Jet& jet2 = handler.patJets->at(j);
-                    if (jet2.pt() < 30 || fabs(jet2.eta()) > 4.7)  continue;
-
-                    if ((jet1.p4() + jet2.p4()).mass() > 600 && fabs(jet1.eta() - jet2.eta()) > 3.5)
-                        topo_patJets = 4;
-
-                    if (topo_patJets == 4)  break;
-                }
-                if (topo_patJets == 4)  break;
+            if (jet.pt() > 50 && fabs(jet.eta()) < 2.5 && jetID) {  // RA1, RA2 definition
+                patHTMHT_sumEt += jet.pt();
             }
         }
+
+        //______________________________________________________________________
+        // patGlobal
+        if (verbose)  std::cout << "compactify: Begin filling patGlobal..." << std::endl;
+        std::vector<double> patGlobal_results;
+        patGlobal.monojet_maxpt_idx  = eval_maxpt_idx(*handler.patJets, 30., 2.5);
+        patGlobal_results            = eval_maxptjj(*handler.patJets, 30., 2.5);
+        patGlobal.dijet_maxpt        = patGlobal_results[0];
+        patGlobal.dijet_maxpt_mjj    = patGlobal_results[1];
+        patGlobal.dijet_mindphi_j30  = eval_mindphi(recoPFMETT0T1.phi, *handler.patJets, 30., 4.7);
+        patGlobal.dijet_mindphi_j40  = eval_mindphi(recoPFMETT0T1.phi, *handler.patJets, 40., 4.7);
+        patGlobal.dijet_mindphi_cj30 = eval_mindphi(recoPFMETT0T1.phi, *handler.patJets, 30., 2.5);
+        patGlobal.dijet_mindphi_cj40 = eval_mindphi(recoPFMETT0T1.phi, *handler.patJets, 40., 2.5);
+        patGlobal_results            = eval_maxcsv(*handler.patJets, 30., 2.5);
+        patGlobal.bjet_maxcsv        = patGlobal_results[0];
+        patGlobal.bjet_maxcsv2       = patGlobal_results[1];
+        patGlobal_results            = eval_maxmjj(*handler.patJets, 30., 4.7, 500., 3.5, true, false);
+        patGlobal.vbf_maxmjj         = patGlobal_results[0];
+        patGlobal.vbf_maxmjj_deta    = patGlobal_results[1];
+        patGlobal_results            = eval_maxmjj(*handler.patJets, 30., 4.7, 500., 3.5, true, true);
+        patGlobal.vbf_leadmjj        = patGlobal_results[0];
+        patGlobal.vbf_leadmjj_deta   = patGlobal_results[1];
+        patGlobal.rho_kt6            = *handler.recoRho_kt6PFJets;
+        patGlobal.njets_j30          = eval_njets(*handler.patJets, 30., 4.7);
+        patGlobal.njets_cj30         = eval_njets(*handler.patJets, 30., 2.5);
+
+
+        //______________________________________________________________________
+        // patJetTopo
+        if (verbose)  std::cout << "compactify: Begin filling patJetTopo..." << std::endl;
+        patJetTopo = 0;  // FIXME
 
 
         //______________________________________________________________________
