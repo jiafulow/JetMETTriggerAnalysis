@@ -13,7 +13,7 @@ void Chain()
     //gROOT->ProcessLine(".L ../interface/SimpleCandidate.h");
     gSystem->Load("$CMSSW_BASE/lib/slc5_amd64_gcc462/libJetMETTriggerAnalysisFWLite.so");
 
-    TChain * chain  = new TChain("Events");
+    TChain * chain  = new TChain("tree");
     TString outfilename = "compactified.L1ETM40.root";
     chain->Add("compactified_0.root");
     chain->Add("compactified_1.root");
@@ -40,4 +40,6 @@ void Chain()
 
     return;
 }
+
+// To run: root -l -b -q Chain.C+
 

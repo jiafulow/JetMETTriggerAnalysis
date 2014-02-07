@@ -282,12 +282,12 @@ std::vector<double> eval_maxmjj(const std::vector<T>& jets, double ptmin, double
 
     if (jets.size() >= 2) {
         for (unsigned int j = 0; j < jets.size()-1; ++j) {
-            if (leadingJetOnly && j!=0)  break;
+            if (leadingJetOnly && j >= 2)  break;
             const T& jet = jets.at(j);
             if (jet.pt() > ptmin && fabs(jet.eta()) < etamax) {
 
                 for (unsigned int k = j+1; k < jets.size(); ++k) {
-                    if (leadingJetOnly && k!=1)  break;
+                    if (leadingJetOnly && k >= 3)  break;
                     const T& ket = jets.at(k);
                     if (ket.pt() > ptmin && fabs(ket.eta()) < etamax) {
                         double deta = fabs(jet.eta() - ket.eta());

@@ -8,3 +8,5 @@ log
 *.cmd
 *~
 AutoDict*
+*.d
+*.so
