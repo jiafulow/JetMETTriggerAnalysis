@@ -10,3 +10,4 @@ log
 AutoDict*
 *.d
 *.so
+*.o
