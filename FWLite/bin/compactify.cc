@@ -215,14 +215,16 @@ FourVector eval_mht(const std::vector<T>& jets, double ptmin, double etamax) {  
 }
 
 template<typename T>
-double eval_mindphi(double metphi, const std::vector<T>& jets, double ptmin, double etamax) {  // no jetID
+double eval_mindphi(double metphi, const std::vector<T>& jets, double ptmin, double etamax, int njmax=999) {  // no jetID
     double mindphi = M_PI;
-    for (unsigned int j = 0; j < jets.size(); ++j) {
+    int nj = 0;
+    for (unsigned int j = 0; j < jets.size() && nj < njmax; ++j) {
         const T& jet = jets.at(j);
         if (jet.pt() > ptmin && fabs(jet.eta()) < etamax) {
             double dphi = fabs(reco::deltaPhi(jet.phi(), metphi));
             if (mindphi > dphi)
                 mindphi = dphi;
+            ++nj;
         }
     }
     return mindphi;
@@ -448,6 +450,8 @@ int main(int argc, char *argv[]) {
     std::vector<simple::PFJet> hltPFJetsNoPU;
     std::vector<simple::PFJet> hltPFJetsL1FastL2L3;
     std::vector<simple::PFJet> hltPFJetsL1FastL2L3NoPU;
+    simple::MET l1MET;
+    simple::MET l1MHT;
     simple::MET hltCaloMET;
     simple::MET hltCaloMETClean;
     simple::MET hltCaloMETCleanUsingJetID;
@@ -485,6 +489,9 @@ int main(int argc, char *argv[]) {
     outtree->Branch("triggerFlags", triggerFlags, Form("triggerFlags[%i]/b", nTriggerFlags));
     outtree->Branch("metfilterFlags", metfilterFlags, Form("metfilterFlags[%i]/b", nMetfilterFlags));
     outtree->Branch("optmetfilterFlags", optmetfilterFlags, Form("optmetfilterFlags[%i]/b", nOptmetfilterFlags));
+    // L1
+    outtree->Branch("l1MET", &l1MET);
+    outtree->Branch("l1MHT", &l1MHT);
     // HLT
     outtree->Branch("hltPFCandidates", &hltPFCandidates);
     outtree->Branch("hltCaloJets", &hltCaloJets);
@@ -682,6 +689,24 @@ int main(int argc, char *argv[]) {
         }
 
         //______________________________________________________________________
+        // l1MET
+        if (verbose)  std::cout << "compactify: Begin filling l1MET..." << std::endl;
+        l1MET.pt     = handler.l1METs->begin()->etMiss();
+        l1MET.phi    = handler.l1METs->begin()->phi();
+        l1MET.sumEt  = handler.l1METs->begin()->etTotal();
+        l1MET.px     = l1MET.pt * cos(l1MET.phi);
+        l1MET.py     = l1MET.pt * sin(l1MET.phi);
+
+        //______________________________________________________________________
+        // l1MHT
+        if (verbose)  std::cout << "compactify: Begin filling l1MHT..." << std::endl;
+        l1MHT.pt     = handler.l1MHTs->begin()->etMiss();
+        l1MHT.phi    = handler.l1MHTs->begin()->phi();
+        l1MHT.sumEt  = handler.l1MHTs->begin()->etTotal();
+        l1MHT.px     = l1MHT.pt * cos(l1MHT.phi);
+        l1MHT.py     = l1MHT.pt * sin(l1MHT.phi);
+
+        //______________________________________________________________________
         // hltCaloMET
         if (verbose)  std::cout << "compactify: Begin filling hltCaloMET..." << std::endl;
         simple_fill(handler.hltCaloMETs->at(0), hltCaloMET);
@@ -714,7 +739,23 @@ int main(int argc, char *argv[]) {
         //______________________________________________________________________
         // hltTrackMET
         if (verbose)  std::cout << "compactify: Begin filling hltTrackMET..." << std::endl;
-        simple_fill(handler.hltTrackMETs->at(0), hltTrackMET);
+        //simple_fill(handler.hltTrackMETs->at(0), hltTrackMET);  // FIXME
+
+        FourVector hltTrackMET_p4(0,0,0,0);
+        double hltTrackMET_sumEt = 0.;
+        for (unsigned int i = 0; i < handler.hltPFCandidates->size(); ++i) {
+            const reco::PFCandidate& cand = handler.hltPFCandidates->at(i);
+            const bool& isPU = handler.hltPFPileUpFlags->at(i);
+            if (!isPU && cand.charge() != 0) {
+                hltTrackMET_p4 -= cand.p4();
+                hltTrackMET_sumEt += cand.pt();
+            }
+        }
+        hltTrackMET.px     = hltTrackMET_p4.px();
+        hltTrackMET.py     = hltTrackMET_p4.py();
+        hltTrackMET.pt     = hltTrackMET_p4.pt();
+        hltTrackMET.phi    = hltTrackMET_p4.phi();
+        hltTrackMET.sumEt  = hltTrackMET_sumEt;
 
         //______________________________________________________________________
         // hltCaloHTMHT
@@ -743,6 +784,8 @@ int main(int argc, char *argv[]) {
         hltCaloGlobal.dijet_mindphi_j40  = eval_mindphi(hltCaloMET.phi, *handler.hltCaloJetsL1Fast, 40., 5.0);
         hltCaloGlobal.dijet_mindphi_cj30 = eval_mindphi(hltCaloMET.phi, *handler.hltCaloJetsL1Fast, 30., 2.6);
         hltCaloGlobal.dijet_mindphi_cj40 = eval_mindphi(hltCaloMET.phi, *handler.hltCaloJetsL1Fast, 40., 2.6);
+        hltCaloGlobal.dijet_mindphi_2cj  = eval_mindphi(hltCaloMET.phi, *handler.hltCaloJetsL1Fast, 30., 2.6, 2);
+        hltCaloGlobal.dijet_mindphi_3cj  = eval_mindphi(hltCaloMET.phi, *handler.hltCaloJetsL1Fast, 30., 2.6, 3);
         hltCaloGlobal_results            = eval_maxcsv(*handler.hltCSVBJetTags, 20., 2.6);
         hltCaloGlobal.bjet_maxcsv        = hltCaloGlobal_results[0];
         hltCaloGlobal.bjet_maxcsv2       = hltCaloGlobal_results[1];
@@ -768,6 +811,8 @@ int main(int argc, char *argv[]) {
         hltPFGlobal.dijet_mindphi_j40  = eval_mindphi(hltPFMET.phi, *handler.hltPFJetsL1FastL2L3, 40., 5.0);
         hltPFGlobal.dijet_mindphi_cj30 = eval_mindphi(hltPFMET.phi, *handler.hltPFJetsL1FastL2L3, 30., 2.6);
         hltPFGlobal.dijet_mindphi_cj40 = eval_mindphi(hltPFMET.phi, *handler.hltPFJetsL1FastL2L3, 40., 2.6);
+        hltPFGlobal.dijet_mindphi_2cj  = eval_mindphi(hltPFMET.phi, *handler.hltPFJetsL1FastL2L3, 30., 2.6, 2);
+        hltPFGlobal.dijet_mindphi_3cj  = eval_mindphi(hltPFMET.phi, *handler.hltPFJetsL1FastL2L3, 30., 2.6, 3);
         hltPFGlobal.bjet_maxcsv        = -99.;
         hltPFGlobal.bjet_maxcsv2       = -99.;
         hltPFGlobal_results            = eval_maxmjj(*handler.hltPFJetsL1FastL2L3, 40., 5.0, 500., 3.5, true, false);  // should be 600
@@ -898,6 +943,8 @@ int main(int argc, char *argv[]) {
         patGlobal.dijet_mindphi_j40  = eval_mindphi(recoPFMETT0T1.phi, *handler.patJets, 40., 4.7);
         patGlobal.dijet_mindphi_cj30 = eval_mindphi(recoPFMETT0T1.phi, *handler.patJets, 30., 2.5);
         patGlobal.dijet_mindphi_cj40 = eval_mindphi(recoPFMETT0T1.phi, *handler.patJets, 40., 2.5);
+        patGlobal.dijet_mindphi_2cj  = eval_mindphi(recoPFMETT0T1.phi, *handler.patJets, 30., 2.5, 2);
+        patGlobal.dijet_mindphi_3cj  = eval_mindphi(recoPFMETT0T1.phi, *handler.patJets, 30., 2.5, 3);
         patGlobal_results            = eval_maxcsv(*handler.patJets, 30., 2.5);
         patGlobal.bjet_maxcsv        = patGlobal_results[0];
         patGlobal.bjet_maxcsv2       = patGlobal_results[1];

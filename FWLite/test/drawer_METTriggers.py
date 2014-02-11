@@ -96,7 +96,7 @@ optmetfilters = [
 drawerInit = DrawerInit()
 chain = TChain("tree", "tree")
 infiles = [
-    "../bin/compactified.L1ETM40.1.root"
+    "../bin/compactified.L1ETM40.1.root",
     ]
 for f in infiles:
     chain.Add(f)
@@ -107,11 +107,11 @@ sections = {}
 sections["overview"]        = False
 sections["overview_prof"]   = False
 sections["topology"]        = False
-sections["topology_hlt"]    = False
+sections["topology_hlt"]    = True
 sections["puremet"]         = False
 sections["puremet_eff"]     = False
 sections["monojet"]         = False
-sections["monojet_eff"]     = True
+sections["monojet_eff"]     = False
 sections["higdijet"]        = False
 sections["higdijet_eff"]    = False
 sections["susdijet"]        = False
@@ -122,11 +122,9 @@ sections["bjet"]            = False
 sections["bjet_eff"]        = False
 sections["vbf"]             = False
 sections["vbf_eff"]         = False
-sections["vbf2"]            = False
-sections["vbf2_eff"]        = False
-sections["inthepast"]       = False
-sections["inthefuture"]     = False
-plotting = []
+
+sections["future_topology_hlt"] = False
+sections["future_trigger"]      = False
 
 #imgdir = "figures_20131130/"  # for Torino workshop
 imgdir = "figures_20140206/"
@@ -136,6 +134,17 @@ if gSystem.AccessPathName(imgdir):
 
 wait = False
 if not wait:  gROOT.SetBatch(1)
+
+plotting = []
+tones = [
+    TColor.GetColor("#9CE0EB"),  #? use TColor.GetColor("#CCF5FF"),
+    TColor.GetColor("#66D6E5"),
+    TColor.GetColor("#20ABBF"),
+    TColor.GetColor("#0D8799"),
+    TColor.GetColor("#055A66"),
+    TColor.GetColor("#002E33"),
+    ]
+toneC = TColor.GetColor("#D67F20")
 
 
 # ______________________________________________________________________________
@@ -848,10 +857,11 @@ if sections["topology_hlt"]:
 
     sel = "(triggerFlags[%i])" % ireftrig
     sel_noNoise = "(metfilterFlags[%i])" % len(metfilters)
+    sel_noQCD  = "patGlobal.dijet_mindphi_2cj>0.5"
     sel_trig0  = ("(triggerFlags[%i] || triggerFlags[%i])" %(triggers.index('HLT_PFMET150_v7'), triggers.index('HLT_PFMET180_v7')) )
     sel_trig1  = ("(triggerFlags[%i])" %(triggers.index('HLT_MonoCentralPFJet80_PFMETnoMu105_NHEF0p95_v4')) )
-    sel_trig2a = ("(triggerFlags[%i])" %(triggers.index('HLT_DiCentralPFNoPUJet50_PFMETORPFMETNoMu80_v4')) )
-    sel_trig2b = ("(triggerFlags[%i])" %(triggers.index('HLT_DiCentralJetSumpT100_dPhi05_DiCentralPFJet60_25_PFMET100_HBHENoiseCleaned_v5')) )
+    sel_trig2a = ("(triggerFlags[%i])" %(triggers.index('HLT_DiCentralJetSumpT100_dPhi05_DiCentralPFJet60_25_PFMET100_HBHENoiseCleaned_v5')) )
+    sel_trig2b = ("(triggerFlags[%i])" %(triggers.index('HLT_DiCentralPFNoPUJet50_PFMETORPFMETNoMu80_v4')) )
     sel_trig2  = ("(triggerFlags[%i] || triggerFlags[%i])" %(triggers.index('HLT_DiCentralPFNoPUJet50_PFMETORPFMETNoMu80_v4'), triggers.index('HLT_DiCentralJetSumpT100_dPhi05_DiCentralPFJet60_25_PFMET100_HBHENoiseCleaned_v5')))
     sel_trig3  = ("(triggerFlags[%i] || triggerFlags[%i])" %(triggers.index('HLT_PFNoPUHT350_PFMET100_v4'), triggers.index('HLT_PFNoPUHT400_PFMET100_v4')) )
     sel_trig4a = ("(triggerFlags[%i])" %(triggers.index('HLT_DiCentralPFJet30_PFMET80_BTagCSV07_v5')) )
@@ -879,7 +889,25 @@ if sections["topology_hlt"]:
         latex.DrawLatex(0.17, 0.97, text)
         return
 
-    def label(histos, trig="MET trigger", legend=(0.52,0.82,0.96,0.94), noNoise=False):
+    def draw_all(params, histos, ytitle="Events", text="Run2012D HLT_L1ETM40_v2", logy=False, zoom=False):
+        ymax = histos[0].GetMaximum()
+        if zoom:
+            histos[0].SetMaximum(ymax * 1.5 / 100)
+        else:
+            histos[0].SetMaximum(ymax * 1.5)
+        histos[0].SetMinimum(0)
+        histos[0].GetYaxis().SetTitle(ytitle)
+
+        histos[0].Draw("hist")
+        for h in histos[1:]:
+            h.Draw("hist same")
+
+        gPad.SetLogy(logy)
+        gPad.RedrawAxis()
+        latex.DrawLatex(0.17, 0.97, text)
+        return
+
+    def label(histos, trig="MET trigger", legend=(0.52,0.82,0.96,0.94), noNoise=False, noQCD=False):
         rate0 = (histos[0].Integral() - histos[1].Integral()) / histos[0].Integral() * 100.
         rate1 = (histos[1].Integral() - histos[2].Integral()) / histos[0].Integral() * 100.
         rate2 = (histos[2].Integral()) / histos[0].Integral() * 100.
@@ -893,9 +921,37 @@ if sections["topology_hlt"]:
         leg1.AddEntry(histos[2], "!A && B (%.0f%%)" % rate2, "f")
         leg1.Draw()
         latex.DrawLatex(0.56, 0.78, "A=%s  B=existing" % trig)
-        if noNoise:
-            latex.DrawLatex(0.56, 0.75, "after offline noise cleaning")
+        if noNoise:  latex.DrawLatex(0.56, 0.75, "after offline noise cleaning")
+        if noQCD  :  latex.DrawLatex(0.56, 0.72, "after offline QCD rejection")
         return (leg1)
+
+    def label_all(histos, trig="MET trigger", legend=(0.52,0.70,0.96,0.94), noNoise=False, noQCD=False):
+        leg1 = TLegend(legend[0], legend[1], legend[2], legend[3])
+        leg1.SetFillStyle(0)
+        leg1.SetLineColor(0)
+        leg1.SetShadowColor(0)
+        leg1.SetBorderSize(0)
+        leg1.AddEntry(histos[7], "Inclusive", "f")
+        leg1.AddEntry(histos[6], "MonoCentralJet", "f")
+        leg1.AddEntry(histos[5], "DiCentralJet", "f")
+        #leg1.AddEntry(histos[4], "DiCentralJet", "f")
+        leg1.AddEntry(histos[3], "HT", "f")
+        leg1.AddEntry(histos[2], "btag", "f")
+        leg1.AddEntry(histos[1], "VBF", "f")
+        #leg1.AddEntry(histos[0], "VBF", "f")
+        leg1.Draw()
+        if noNoise:  latex.DrawLatex(0.56, 0.66, "after offline noise cleaning")
+        if noQCD  :  latex.DrawLatex(0.56, 0.62, "after offline QCD rejection")
+        return (leg1)
+
+    kColor = kBlue2
+    kTrig = "Inclusive"
+    sel_trigC  = "(%s &&  %s)" % (sel_trig0, sel_trig0)
+    sel_trigD  = "(%s ||  %s)" % (sel_trig0, sel_trig0)
+    sel_trigB  = "(%s && !%s)" % (sel_trig0, sel_trigC)  # bottom
+    sel_trigAB = "(%s ||  %s)" % (sel_trig0, sel_trigC)  # middle
+    sel_trigA  = "(%s)"        % (sel_trigD)  # top
+    plotting.append((sel_trigA, sel_trigAB, sel_trigB, kColor, kTrig))
 
     kColor = kYellow
     kTrig = "MonoCentralJet"
@@ -907,7 +963,7 @@ if sections["topology_hlt"]:
     plotting.append((sel_trigA, sel_trigAB, sel_trigB, kColor, kTrig))
 
     kColor = kOrange3
-    kTrig = "DiCentralJetSUS"
+    kTrig = "DiCentralJetHIG"
     sel_trigC  = "(%s &&  %s)" % (sel_trigA, sel_trig2a)
     sel_trigD  = "(%s ||  %s)" % (sel_trigA, sel_trig2a)
     sel_trigB  = "(%s && !%s)" % (sel_trigA, sel_trigC)  # bottom
@@ -916,7 +972,7 @@ if sections["topology_hlt"]:
     plotting.append((sel_trigA, sel_trigAB, sel_trigB, kColor, kTrig))
 
     kColor = kOrange3
-    kTrig = "DiCentralJetHIG"
+    kTrig = "DiCentralJetSUS"
     sel_trigC  = "(%s &&  %s)" % (sel_trigA, sel_trig2b)
     sel_trigD  = "(%s ||  %s)" % (sel_trigA, sel_trig2b)
     sel_trigB  = "(%s && !%s)" % (sel_trigA, sel_trigC)  # bottom
@@ -933,7 +989,7 @@ if sections["topology_hlt"]:
     sel_trigA  = "(%s)"        % (sel_trigD)  # top
     plotting.append((sel_trigA, sel_trigAB, sel_trigB, kColor, kTrig))
 
-    kColor = kCyan
+    kColor = kBoson
     kTrig = "btag"
     sel_trigC  = "(%s &&  %s)" % (sel_trigA, sel_trig4a)
     sel_trigD  = "(%s ||  %s)" % (sel_trigA, sel_trig4a)
@@ -942,7 +998,7 @@ if sections["topology_hlt"]:
     sel_trigA  = "(%s)"        % (sel_trigD)  # top
     plotting.append((sel_trigA, sel_trigAB, sel_trigB, kColor, kTrig))
 
-    kColor = kMagenta
+    kColor = kQuark
     kTrig = "VBFAll"
     sel_trigC  = "(%s &&  %s)" % (sel_trigA, sel_trig5a)
     sel_trigD  = "(%s ||  %s)" % (sel_trigA, sel_trig5a)
@@ -951,7 +1007,7 @@ if sections["topology_hlt"]:
     sel_trigA  = "(%s)"        % (sel_trigD)  # top
     plotting.append((sel_trigA, sel_trigAB, sel_trigB, kColor, kTrig))
 
-    kColor = kMagenta
+    kColor = kQuark
     kTrig = "VBFLead"
     sel_trigC  = "(%s &&  %s)" % (sel_trigA, sel_trig5b)
     sel_trigD  = "(%s ||  %s)" % (sel_trigA, sel_trig5b)
@@ -961,76 +1017,241 @@ if sections["topology_hlt"]:
     plotting.append((sel_trigA, sel_trigAB, sel_trigB, kColor, kTrig))
 
 
-    for p in plotting:
-        # HLT PFMET
+    #for p in plotting[1:]:  # skip Inclusive
+    #    (sel_trigA, sel_trigAB, sel_trigB, kColor, kTrig) = p
+    #
+    #    # HLT PFMET
+    #    variable = ("hltPFMET", "hltPFMET.pt")
+    #    binning = ("#scale[0.7]{HLT} PFMET [GeV]", 50, 0, 250)
+    #    addsel = "(1)"
+    #    params = [
+    #        (variable[0]+"_nofilt_trigA" , kBlack, kColor   , variable[1], "*".join([sel, addsel, sel_trigA])),
+    #        (variable[0]+"_nofilt_trigAB", kBlack, nBlue    , variable[1], "*".join([sel, addsel, sel_trigAB])),
+    #        (variable[0]+"_nofilt_trigB" , kBlack, kBlue    , variable[1], "*".join([sel, addsel, sel_trigB])),
+    #        ]
+    #    histos = book(params, binning)
+    #    project(params, histos); draw(params, histos); legs = label(histos, kTrig)
+    #    save(imgdir, "topology_hlt_nofilt_"+kTrig+"_"+variable[0])
+    #
+    #    params = [
+    #        (variable[0]+"_filt_trigA"   , kBlack, kColor   , variable[1], "*".join([sel, addsel, sel_trigA , sel_noNoise])),
+    #        (variable[0]+"_filt_trigAB"  , kBlack, nBlue    , variable[1], "*".join([sel, addsel, sel_trigAB, sel_noNoise])),
+    #        (variable[0]+"_filt_trigB"   , kBlack, kBlue    , variable[1], "*".join([sel, addsel, sel_trigB , sel_noNoise])),
+    #        ]
+    #    histos = book(params, binning)
+    #    project(params, histos); draw(params, histos); legs = label(histos, kTrig, noNoise=True)
+    #    save(imgdir, "topology_hlt_"+kTrig+"_"+variable[0])
+    #
+    #    params = [
+    #        (variable[0]+"_kill_trigA"   , kBlack, kColor   , variable[1], "*".join([sel, addsel, sel_trigA , sel_noNoise, sel_noQCD])),
+    #        (variable[0]+"_kill_trigAB"  , kBlack, nBlue    , variable[1], "*".join([sel, addsel, sel_trigAB, sel_noNoise, sel_noQCD])),
+    #        (variable[0]+"_kill_trigB"   , kBlack, kBlue    , variable[1], "*".join([sel, addsel, sel_trigB , sel_noNoise, sel_noQCD])),
+    #        ]
+    #    histos = book(params, binning)
+    #    project(params, histos); draw(params, histos); legs = label(histos, kTrig, noNoise=True, noQCD=True)
+    #    save(imgdir, "topology_hlt_kill_"+kTrig+"_"+variable[0])
+    #
+    #    # RECO PFMET
+    #    variable = ("recoPFMETT0T1", "recoPFMETT0T1.pt")
+    #    binning = ("#scale[0.7]{RECO} Type-0+1 PFMET [GeV]", 50, 0, 250)
+    #    addsel = "(1)"
+    #    params = [
+    #        (variable[0]+"_nofilt_trigA" , kBlack, kColor   , variable[1], "*".join([sel, addsel, sel_trigA])),
+    #        (variable[0]+"_nofilt_trigAB", kBlack, nBlue    , variable[1], "*".join([sel, addsel, sel_trigAB])),
+    #        (variable[0]+"_nofilt_trigB" , kBlack, kBlue    , variable[1], "*".join([sel, addsel, sel_trigB])),
+    #        ]
+    #    histos = book(params, binning)
+    #    project(params, histos); draw(params, histos); legs = label(histos, kTrig)
+    #    save(imgdir, "topology_hlt_nofilt_"+kTrig+"_"+variable[0])
+    #
+    #    params = [
+    #        (variable[0]+"_filt_trigA"   , kBlack, kColor   , variable[1], "*".join([sel, addsel, sel_trigA , sel_noNoise])),
+    #        (variable[0]+"_filt_trigAB"  , kBlack, nBlue    , variable[1], "*".join([sel, addsel, sel_trigAB, sel_noNoise])),
+    #        (variable[0]+"_filt_trigB"   , kBlack, kBlue    , variable[1], "*".join([sel, addsel, sel_trigB , sel_noNoise])),
+    #        ]
+    #    histos = book(params, binning)
+    #    project(params, histos); draw(params, histos); legs = label(histos, kTrig, noNoise=True)
+    #    save(imgdir, "topology_hlt_"+kTrig+"_"+variable[0])
+    #
+    #    params = [
+    #        (variable[0]+"_kill_trigA"   , kBlack, kColor   , variable[1], "*".join([sel, addsel, sel_trigA , sel_noNoise, sel_noQCD])),
+    #        (variable[0]+"_kill_trigAB"  , kBlack, nBlue    , variable[1], "*".join([sel, addsel, sel_trigAB, sel_noNoise, sel_noQCD])),
+    #        (variable[0]+"_kill_trigB"   , kBlack, kBlue    , variable[1], "*".join([sel, addsel, sel_trigB , sel_noNoise, sel_noQCD])),
+    #        ]
+    #    histos = book(params, binning)
+    #    project(params, histos); draw(params, histos); legs = label(histos, kTrig, noNoise=True, noQCD=True)
+    #    save(imgdir, "topology_hlt_kill_"+kTrig+"_"+variable[0])
+
+
+    # All
+    params = []
+
+    # HLT PFMET
+    variable = ("hltPFMET", "hltPFMET.pt")
+    binning = ("#scale[0.7]{HLT} PFMET [GeV]", 50, 0, 250)
+    addsel = "(1)"
+    del params[:]
+    for i, p in enumerate(reversed(plotting)):
         (sel_trigA, sel_trigAB, sel_trigB, kColor, kTrig) = p
-        variable = ("hltPFMET", "hltPFMET.pt")
-        binning = ("#scale[0.7]{HLT} PFMET [GeV]", 50, 0, 250)
-        addsel = "(1)"
-        params = [
-            (variable[0]+"_nofilt_trigA" , kBlack, kColor   , variable[1], "*".join([sel, addsel, sel_trigA])),
-            (variable[0]+"_nofilt_trigAB", kBlack, nBlue    , variable[1], "*".join([sel, addsel, sel_trigAB])),
-            (variable[0]+"_nofilt_trigB" , kBlack, kBlue    , variable[1], "*".join([sel, addsel, sel_trigB])),
-            ]
-        histos = book(params, binning)
-        project(params, histos)
-        draw(params, histos)
-        legs = label(histos, kTrig)
-        save(imgdir, "topology_hlt_nofilt_"+kTrig+"_"+variable[0])
+        params.append((variable[0]+"_nofilt_trigA_%i" % i, kBlack, kColor   , variable[1], "*".join([sel, addsel, sel_trigA])))
+    histos = book(params, binning)
+    project(params, histos); draw_all(params, histos); legs = label_all(histos, kTrig)
+    save(imgdir, "topology_hlt_nofilt_all_"+variable[0])
 
-        del params[:]
-        params = [
-            (variable[0]+"_filt_trigA"   , kBlack, kColor   , variable[1], "*".join([sel, addsel, sel_trigA , sel_noNoise])),
-            (variable[0]+"_filt_trigAB"  , kBlack, nBlue    , variable[1], "*".join([sel, addsel, sel_trigAB, sel_noNoise])),
-            (variable[0]+"_filt_trigB"   , kBlack, kBlue    , variable[1], "*".join([sel, addsel, sel_trigB , sel_noNoise])),
-            ]
-        histos = book(params, binning)
-        project(params, histos)
-        draw(params, histos)
-        legs = label(histos, kTrig, noNoise=True)
-        save(imgdir, "topology_hlt_"+kTrig+"_"+variable[0])
-
-        # RECO PFMET
+    del params[:]
+    for i, p in enumerate(reversed(plotting)):
         (sel_trigA, sel_trigAB, sel_trigB, kColor, kTrig) = p
-        variable = ("recoPFMETT0T1", "recoPFMETT0T1.pt")
-        binning = ("#scale[0.7]{RECO} Type-0+1 PFMET [GeV]", 50, 0, 250)
-        addsel = "(1)"
-        params = [
-            (variable[0]+"_nofilt_trigA" , kBlack, kColor   , variable[1], "*".join([sel, addsel, sel_trigA])),
-            (variable[0]+"_nofilt_trigAB", kBlack, nBlue    , variable[1], "*".join([sel, addsel, sel_trigAB])),
-            (variable[0]+"_nofilt_trigB" , kBlack, kBlue    , variable[1], "*".join([sel, addsel, sel_trigB])),
-            ]
-        histos = book(params, binning)
-        project(params, histos)
-        draw(params, histos)
-        legs = label(histos, kTrig)
-        save(imgdir, "topology_hlt_nofilt_"+kTrig+"_"+variable[0])
+        params.append((variable[0]+"_nofilt_trigA_%i" % i, kBlack, kColor   , variable[1], "*".join([sel, addsel, sel_trigA, sel_noNoise])))
+    histos = book(params, binning)
+    project(params, histos); draw_all(params, histos); legs = label_all(histos, kTrig, noNoise=True)
+    save(imgdir, "topology_hlt_all_"+variable[0])
 
-        del params[:]
-        params = [
-            (variable[0]+"_filt_trigA"   , kBlack, kColor   , variable[1], "*".join([sel, addsel, sel_trigA , sel_noNoise])),
-            (variable[0]+"_filt_trigAB"  , kBlack, nBlue    , variable[1], "*".join([sel, addsel, sel_trigAB, sel_noNoise])),
-            (variable[0]+"_filt_trigB"   , kBlack, kBlue    , variable[1], "*".join([sel, addsel, sel_trigB , sel_noNoise])),
-            ]
-        histos = book(params, binning)
-        project(params, histos)
-        draw(params, histos)
-        legs = label(histos, kTrig, noNoise=True)
-        save(imgdir, "topology_hlt_"+kTrig+"_"+variable[0])
+    del params[:]
+    for i, p in enumerate(reversed(plotting)):
+        (sel_trigA, sel_trigAB, sel_trigB, kColor, kTrig) = p
+        params.append((variable[0]+"_nofilt_trigA_%i" % i, kBlack, kColor   , variable[1], "*".join([sel, addsel, sel_trigA, sel_noNoise, sel_noQCD])))
+    histos = book(params, binning)
+    project(params, histos); draw_all(params, histos); legs = label_all(histos, kTrig, noNoise=True, noQCD=True)
+    save(imgdir, "topology_hlt_kill_all_"+variable[0])
+
+    # RECO PFMET
+    variable = ("recoPFMETT0T1", "recoPFMETT0T1.pt")
+    binning = ("#scale[0.7]{RECO} Type-0+1 PFMET [GeV]", 50, 0, 250)
+    addsel = "(1)"
+    del params[:]
+    for i, p in enumerate(reversed(plotting)):
+        (sel_trigA, sel_trigAB, sel_trigB, kColor, kTrig) = p
+        params.append((variable[0]+"_nofilt_trigA_%i" % i, kBlack, kColor   , variable[1], "*".join([sel, addsel, sel_trigA])))
+    histos = book(params, binning)
+    project(params, histos); draw_all(params, histos); legs = label_all(histos, kTrig)
+    save(imgdir, "topology_hlt_nofilt_all_"+variable[0])
+
+    del params[:]
+    for i, p in enumerate(reversed(plotting)):
+        (sel_trigA, sel_trigAB, sel_trigB, kColor, kTrig) = p
+        params.append((variable[0]+"_nofilt_trigA_%i" % i, kBlack, kColor   , variable[1], "*".join([sel, addsel, sel_trigA, sel_noNoise])))
+    histos = book(params, binning)
+    project(params, histos); draw_all(params, histos); legs = label_all(histos, kTrig, noNoise=True)
+    save(imgdir, "topology_hlt_all_"+variable[0])
+
+    del params[:]
+    for i, p in enumerate(reversed(plotting)):
+        (sel_trigA, sel_trigAB, sel_trigB, kColor, kTrig) = p
+        params.append((variable[0]+"_nofilt_trigA_%i" % i, kBlack, kColor   , variable[1], "*".join([sel, addsel, sel_trigA, sel_noNoise, sel_noQCD])))
+    histos = book(params, binning)
+    project(params, histos); draw_all(params, histos); legs = label_all(histos, kTrig, noNoise=True, noQCD=True)
+    save(imgdir, "topology_hlt_kill_all_"+variable[0])
+
+
+    # hltCaloMETClean
+    variable = ("hltCaloMETClean", "hltCaloMETClean.pt")
+    binning = ("#scale[0.7]{HLT HBHENoiseCleaned} CaloMET [GeV]", 40, 0, 200)
+    addsel = "(1)"
+    del params[:]
+    for i, p in enumerate(reversed(plotting)):
+        (sel_trigA, sel_trigAB, sel_trigB, kColor, kTrig) = p
+        params.append((variable[0]+"_nofilt_trigA_%i" % i, kBlack, kColor   , variable[1], "*".join([sel, addsel, sel_trigA])))
+    histos = book(params, binning)
+    project(params, histos); draw_all(params, histos); legs = label_all(histos, kTrig)
+    save(imgdir, "topology_hlt_nofilt_all_"+variable[0])
+
+    # hltCaloMETCleanUsingJetID
+    variable = ("hltCaloMETCleanUsingJetID", "hltCaloMETCleanUsingJetID.pt")
+    binning = ("#scale[0.7]{HLT JetIDCleaned} CaloMET [GeV]", 40, 0, 200)
+    addsel = "(1)"
+    del params[:]
+    for i, p in enumerate(reversed(plotting)):
+        (sel_trigA, sel_trigAB, sel_trigB, kColor, kTrig) = p
+        params.append((variable[0]+"_nofilt_trigA_%i" % i, kBlack, kColor   , variable[1], "*".join([sel, addsel, sel_trigA])))
+    histos = book(params, binning)
+    project(params, histos); draw_all(params, histos); legs = label_all(histos, kTrig)
+    save(imgdir, "topology_hlt_nofilt_all_"+variable[0])
+
+    # hltTrackMET
+    variable = ("hltTrackMET", "hltTrackMET.pt")
+    binning = ("#scale[0.7]{HLT} TrackMET [GeV]", 30, 0, 150)
+    addsel = "(1)"
+    del params[:]
+    for i, p in enumerate(reversed(plotting)):
+        (sel_trigA, sel_trigAB, sel_trigB, kColor, kTrig) = p
+        params.append((variable[0]+"_nofilt_trigA_%i" % i, kBlack, kColor   , variable[1], "*".join([sel, addsel, sel_trigA])))
+    histos = book(params, binning)
+    project(params, histos); draw_all(params, histos); legs = label_all(histos, kTrig)
+    save(imgdir, "topology_hlt_nofilt_all_"+variable[0])
+
+    # hltPFMET_tracksumptf
+    variable = ("hltPFMET_sumptchf", "hltTrackMET.sumEt/hltPFMET.pt")
+    binning = ("#scale[0.7]{HLT} sum track p_{T}/PFMET", 40, 0, 2.0)
+    addsel = "(1)"
+    del params[:]
+    for i, p in enumerate(reversed(plotting)):
+        (sel_trigA, sel_trigAB, sel_trigB, kColor, kTrig) = p
+        params.append((variable[0]+"_nofilt_trigA_%i" % i, kBlack, kColor   , variable[1], "*".join([sel, addsel, sel_trigA])))
+    histos = book(params, binning)
+    project(params, histos); draw_all(params, histos); legs = label_all(histos, kTrig)
+    save(imgdir, "topology_hlt_nofilt_all_"+variable[0])
+
+    # HLT mindphi
+    variable = ("hltPFJetsL1FastL2L3_mindphi_2cj", "hltPFGlobal.dijet_mindphi_2cj")
+    binning = ("#scale[0.7]{RECO} min #Delta#phi_{2cj}(MET,jet)", 32, 0, 3.2)
+    addsel = "(1)"
+    del params[:]
+    for i, p in enumerate(reversed(plotting)):
+        (sel_trigA, sel_trigAB, sel_trigB, kColor, kTrig) = p
+        params.append((variable[0]+"_nofilt_trigA_%i" % i, kBlack, kColor   , variable[1], "*".join([sel, addsel, sel_trigA, sel_noNoise])))
+    histos = book(params, binning)
+    project(params, histos); draw_all(params, histos); legs = label_all(histos, kTrig, noNoise=True)
+    save(imgdir, "topology_hlt_all_"+variable[0])
+
+    # RECO mindphi
+    variable = ("patmindphi_2cj", "patGlobal.dijet_mindphi_2cj")
+    binning = ("#scale[0.7]{RECO} min #Delta#phi_{2cj}(MET,jet)", 32, 0, 3.2)
+    addsel = "(1)"
+    del params[:]
+    for i, p in enumerate(reversed(plotting)):
+        (sel_trigA, sel_trigAB, sel_trigB, kColor, kTrig) = p
+        params.append((variable[0]+"_nofilt_trigA_%i" % i, kBlack, kColor   , variable[1], "*".join([sel, addsel, sel_trigA, sel_noNoise])))
+    histos = book(params, binning)
+    project(params, histos); draw_all(params, histos); legs = label_all(histos, kTrig, noNoise=True)
+    save(imgdir, "topology_hlt_all_"+variable[0])
+
+    variable = ("patmindphi_j30", "patGlobal.dijet_mindphi_j30")
+    binning = ("#scale[0.7]{RECO} min #Delta#phi_{j30}(MET,jet)", 32, 0, 3.2)
+    addsel = "(1)"
+    del params[:]
+    for i, p in enumerate(reversed(plotting)):
+        (sel_trigA, sel_trigAB, sel_trigB, kColor, kTrig) = p
+        params.append((variable[0]+"_nofilt_trigA_%i" % i, kBlack, kColor   , variable[1], "*".join([sel, addsel, sel_trigA, sel_noNoise])))
+    histos = book(params, binning)
+    project(params, histos); draw_all(params, histos); legs = label_all(histos, kTrig, noNoise=True)
+    save(imgdir, "topology_hlt_all_"+variable[0])
+
+    # RECO alphaT
+    variable = ("patalphat", "alphaT(patJets[0].pt, patJets[0].px, patJets[0].py, patJets[1].pt, patJets[1].px, patJets[1].py)")
+    binning = ("#scale[0.7]{RECO} #alpha_{T}", 32, 0, 3.2)
+    addsel = "(1)"
+    del params[:]
+    for i, p in enumerate(reversed(plotting)):
+        (sel_trigA, sel_trigAB, sel_trigB, kColor, kTrig) = p
+        params.append((variable[0]+"_nofilt_trigA_%i" % i, kBlack, kColor   , variable[1], "*".join([sel, addsel, sel_trigA, sel_noNoise])))
+    histos = book(params, binning)
+    project(params, histos); draw_all(params, histos); legs = label_all(histos, kTrig, noNoise=True)
+    save(imgdir, "topology_hlt_all_"+variable[0])
+
 
 
 # ______________________________________________________________________________
 if sections["puremet"]:
     if plotting: del plotting[:]
 
-    kColor = kBlue
+    kColor = kBlue2
     kTrig = "PFMET150"
 
     sel = "(triggerFlags[%i])" % ireftrig
     sel_noNoise = "(metfilterFlags[%i])" % len(metfilters)
     sel_trig0 = ("(triggerFlags[%i] || triggerFlags[%i])" %(triggers.index('HLT_PFMET150_v7'), triggers.index('HLT_PFMET180_v7')) )
     sel_trig1 = "(hltCaloMET.pt>80 && hltPFMET.pt>150)"
-    sel_trig2 = "(hltCaloMET.pt>90 && hltCaloMETClean.pt>70 && hltPFMET.pt>150)"
+    sel_trig2 = "(hltCaloMET.pt>90 && hltCaloMETClean.pt>70 && hltCaloMETCleanUsingJetID.pt>70 && hltPFMET.pt>150)"
 
     # hltPFMET
     variable = ("hltPFMET", "hltPFMET.pt")
@@ -1040,12 +1261,12 @@ if sections["puremet"]:
 
     variable = ("hltPFMETNoMu", "hltPFMETNoMu.pt")
     binning = ("#scale[0.7]{HLT} PFMETNoMu [GeV]", 34, 130, 300)
-    addsel = "(hltCaloMET.pt>80 && hltPFMET.pt>-99)"
+    addsel = addsel
     plotting.append((variable, binning, addsel))
 
     variable = ("hltPFMETCleanUsingJetID", "hltPFMETCleanUsingJetID.pt")
     binning = ("#scale[0.7]{HLT JetIDCleaned} PFMET [GeV]", 34, 130, 300)
-    addsel = "(hltCaloMET.pt>80 && hltPFMET.pt>-99)"
+    addsel = addsel
     plotting.append((variable, binning, addsel))
 
     # hltCaloMET
@@ -1058,13 +1279,13 @@ if sections["puremet"]:
     # hltCaloMETClean
     variable = ("hltCaloMETClean", "hltCaloMETClean.pt")
     binning = ("#scale[0.7]{HLT HBHENoiseCleaned} CaloMET [GeV]", 40, 0, 200)
-    addsel = "(hltCaloMET.pt>-99 && hltPFMET.pt>150)"
+    addsel = addsel
     plotting.append((variable, binning, addsel))
 
     # hltCaloMETCleanUsingJetID
     variable = ("hltCaloMETCleanUsingJetID", "hltCaloMETCleanUsingJetID.pt")
     binning = ("#scale[0.7]{HLT JetIDCleaned} CaloMET [GeV]", 40, 0, 200)
-    addsel = "(hltCaloMET.pt>-99 && hltPFMET.pt>150)"
+    addsel = addsel
     plotting.append((variable, binning, addsel))
 
     #___________________________________________________________________________
@@ -1077,6 +1298,12 @@ if sections["puremet"]:
     # hltTrackMETDPhi
     variable = ("hltTrackMETDPhi", "abs(deltaPhi(hltPFMET.phi,hltTrackMET.phi))")
     binning = ("#scale[0.7]{HLT} #Delta#phi(PFMET,TrackMET)", 32, 0, 3.2)
+    addsel = sel_trig1
+    plotting.append((variable, binning, addsel))
+
+    # hltPFMET_tracksumptf
+    variable = ("hltPFMET_sumptchf", "hltTrackMET.sumEt/hltPFMET.pt")
+    binning = ("#scale[0.7]{HLT} sum track p_{T}/PFMET", 40, 0, 2.0)
     addsel = sel_trig1
     plotting.append((variable, binning, addsel))
 
@@ -1156,12 +1383,12 @@ if sections["monojet"]:
 
     variable = ("hltPFMETNoMu", "hltPFMETNoMu.pt")
     binning = ("#scale[0.7]{HLT} PFMETNoMu [GeV]", 34, 80, 250)
-    addsel = "(Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>65)>0 && hltCaloMET.pt>65 && hltPFJetsL1FastL2L3[0].nhf<0.95 && Sum$(abs(hltPFJetsL1FastL2L3.eta)<2.6 && hltPFJetsL1FastL2L3.pt>80)>0 && hltPFMETNoMu.pt>-99)"
+    addsel = addsel
     plotting.append((variable, binning, addsel))
 
     variable = ("hltPFMETCleanUsingJetID", "hltPFMETCleanUsingJetID.pt")
     binning = ("#scale[0.7]{HLT JetIDCleaned} PFMET [GeV]", 34, 80, 250)
-    addsel = "(Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>65)>0 && hltCaloMET.pt>65 && hltPFJetsL1FastL2L3[0].nhf<0.95 && Sum$(abs(hltPFJetsL1FastL2L3.eta)<2.6 && hltPFJetsL1FastL2L3.pt>80)>0 && hltPFMETNoMu.pt>-99)"
+    addsel = addsel
     plotting.append((variable, binning, addsel))
 
     # hltCaloMET
@@ -1174,13 +1401,13 @@ if sections["monojet"]:
     # hltCaloMETClean
     variable = ("hltCaloMETClean", "hltCaloMETClean.pt")
     binning = ("#scale[0.7]{HLT HBHENoiseCleaned} CaloMET [GeV]", 40, 0, 200)
-    addsel = "(Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>65)>0 && hltCaloMET.pt>-99 && hltPFJetsL1FastL2L3[0].nhf<0.95 && Sum$(abs(hltPFJetsL1FastL2L3.eta)<2.6 && hltPFJetsL1FastL2L3.pt>80)>0 && hltPFMETNoMu.pt>105)"
+    addsel = addsel
     plotting.append((variable, binning, addsel))
 
     # hltCaloMETCleanUsingJetID
     variable = ("hltCaloMETCleanUsingJetID", "hltCaloMETCleanUsingJetID.pt")
     binning = ("#scale[0.7]{HLT JetIDCleaned} CaloMET [GeV]", 40, 0, 200)
-    addsel = "(Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>65)>0 && hltCaloMET.pt>-99 && hltPFJetsL1FastL2L3[0].nhf<0.95 && Sum$(abs(hltPFJetsL1FastL2L3.eta)<2.6 && hltPFJetsL1FastL2L3.pt>80)>0 && hltPFMETNoMu.pt>105)"
+    addsel = addsel
     plotting.append((variable, binning, addsel))
 
     # hltPFJet
@@ -1191,22 +1418,22 @@ if sections["monojet"]:
 
     variable = ("hltPFJetsL1FastL2L3NoPU_pt1", "Max$(hltPFJetsL1FastL2L3NoPU.pt)")
     binning = ("#scale[0.7]{HLT} Leading PFNoPUJet p_{T} [GeV]", 30, 0, 300)
-    addsel = "(Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>65)>0 && hltCaloMET.pt>65 && hltPFJetsL1FastL2L3[0].nhf<0.95 && Sum$(abs(hltPFJetsL1FastL2L3.eta)<2.6 && hltPFJetsL1FastL2L3.pt>-99)>0 && hltPFMETNoMu.pt>105)"
+    addsel = addsel
     plotting.append((variable, binning, addsel))
 
     variable = ("hltPFJetsL1FastL2L3_pt2", "MaxIf$(hltPFJetsL1FastL2L3.pt, hltPFJetsL1FastL2L3.pt!=Max$(hltPFJetsL1FastL2L3.pt))")
     binning = ("#scale[0.7]{HLT} Subleading PFJet p_{T} [GeV]", 30, 0, 300)
-    addsel = "(Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>65)>0 && hltCaloMET.pt>65 && hltPFJetsL1FastL2L3[0].nhf<0.95 && Sum$(abs(hltPFJetsL1FastL2L3.eta)<2.6 && hltPFJetsL1FastL2L3.pt>-99)>0 && hltPFMETNoMu.pt>105)"
+    addsel = addsel
     plotting.append((variable, binning, addsel))
 
     variable = ("hltPFJetsL1FastL2L3NoPU_pt2", "MaxIf$(hltPFJetsL1FastL2L3NoPU.pt, hltPFJetsL1FastL2L3NoPU.pt!=Max$(hltPFJetsL1FastL2L3NoPU.pt))")
     binning = ("#scale[0.7]{HLT} Subleading PFNoPUJet p_{T} [GeV]", 30, 0, 150)
-    addsel = "(Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>65)>0 && hltCaloMET.pt>65 && hltPFJetsL1FastL2L3[0].nhf<0.95 && Sum$(abs(hltPFJetsL1FastL2L3.eta)<2.6 && hltPFJetsL1FastL2L3.pt>-99)>0 && hltPFMETNoMu.pt>105)"
+    addsel = addsel
     plotting.append((variable, binning, addsel))
 
     variable = ("hltPFJetsL1FastL2L3_eta1", "Sum$(hltPFJetsL1FastL2L3.eta * (hltPFJetsL1FastL2L3.pt==Max$(hltPFJetsL1FastL2L3.pt)))")
     binning = ("#scale[0.7]{HLT} Leading PFJet #eta", 20, -5, 5)
-    addsel = "(Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>65)>0 && hltCaloMET.pt>65 && hltPFJetsL1FastL2L3[0].nhf<0.95 && Sum$(abs(hltPFJetsL1FastL2L3.eta)<2.6 && hltPFJetsL1FastL2L3.pt>-99)>0 && hltPFMETNoMu.pt>105)"
+    addsel = addsel
     plotting.append((variable, binning, addsel))
 
     # hltCaloJet
@@ -1217,12 +1444,12 @@ if sections["monojet"]:
 
     variable = ("hltCaloJetsL1Fast_pt2", "MaxIf$(hltCaloJetsL1Fast.pt, hltCaloJetsL1Fast.pt!=Max$(hltCaloJetsL1Fast.pt))")
     binning = ("#scale[0.7]{HLT} Subleading CaloJet p_{T} [GeV]", 30, 0, 150)
-    addsel = "(Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>-99)>0 && hltCaloMET.pt>65 && hltPFJetsL1FastL2L3[0].nhf<0.95 && Sum$(abs(hltPFJetsL1FastL2L3.eta)<2.6 && hltPFJetsL1FastL2L3.pt>80)>0 && hltPFMETNoMu.pt>105)"
+    addsel = addsel
     plotting.append((variable, binning, addsel))
 
     variable = ("hltCaloJetsL1Fast_eta1", "Sum$(hltCaloJetsL1Fast.eta * (hltCaloJetsL1Fast.pt==Max$(hltCaloJetsL1Fast.pt)))")
     binning = ("#scale[0.7]{HLT} Leading CaloJet #eta", 20, -5, 5)
-    addsel = "(Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>-99)>0 && hltCaloMET.pt>65 && hltPFJetsL1FastL2L3[0].nhf<0.95 && Sum$(abs(hltPFJetsL1FastL2L3.eta)<2.6 && hltPFJetsL1FastL2L3.pt>80)>0 && hltPFMETNoMu.pt>105)"
+    addsel = addsel
     plotting.append((variable, binning, addsel))
 
     # nhf
@@ -1298,18 +1525,18 @@ if sections["higdijet"]:
 
     # hltPFMET
     variable = ("hltPFMET", "hltPFMET.pt")
-    binning = ("#scale[0.7]{HLT} PFMET [GeV]", 28, 60, 200)
+    binning = ("#scale[0.7]{HLT} PFMET [GeV]", 32, 60, 220)
     addsel = "(hltCaloMET.pt>50 && hltCaloMETClean.pt>25 && Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>15)>1 && Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>50)>0 && hltCaloGlobal.dijet_maxpt>100 && hltCaloGlobal.dijet_mindphi_j40>0.5 && Sum$(abs(hltPFJetsL1FastL2L3.eta)<2.6 && hltPFJetsL1FastL2L3.pt>25)>1 && Sum$(abs(hltPFJetsL1FastL2L3.eta)<2.6 && hltPFJetsL1FastL2L3.pt>60)>0 && hltPFMET.pt>-99)"
     plotting.append((variable, binning, addsel))
 
     variable = ("hltPFMETNoMu", "hltPFMETNoMu.pt")
-    binning = ("#scale[0.7]{HLT} PFMETNoMu [GeV]", 28, 60, 200)
-    addsel = "(hltCaloMET.pt>50 && hltCaloMETClean.pt>25 && Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>15)>1 && Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>50)>0 && hltCaloGlobal.dijet_maxpt>100 && hltCaloGlobal.dijet_mindphi_j40>0.5 && Sum$(abs(hltPFJetsL1FastL2L3.eta)<2.6 && hltPFJetsL1FastL2L3.pt>25)>1 && Sum$(abs(hltPFJetsL1FastL2L3.eta)<2.6 && hltPFJetsL1FastL2L3.pt>60)>0 && hltPFMET.pt>-99)"
+    binning = ("#scale[0.7]{HLT} PFMETNoMu [GeV]", 32, 60, 220)
+    addsel = addsel
     plotting.append((variable, binning, addsel))
 
     variable = ("hltPFMETCleanUsingJetID", "hltPFMETCleanUsingJetID.pt")
-    binning = ("#scale[0.7]{HLT} PFMETCleanUsingJetID [GeV]", 28, 60, 200)
-    addsel = "(hltCaloMET.pt>50 && hltCaloMETClean.pt>25 && Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>15)>1 && Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>50)>0 && hltCaloGlobal.dijet_maxpt>100 && hltCaloGlobal.dijet_mindphi_j40>0.5 && Sum$(abs(hltPFJetsL1FastL2L3.eta)<2.6 && hltPFJetsL1FastL2L3.pt>25)>1 && Sum$(abs(hltPFJetsL1FastL2L3.eta)<2.6 && hltPFJetsL1FastL2L3.pt>60)>0 && hltPFMET.pt>-99)"
+    binning = ("#scale[0.7]{HLT} PFMETCleanUsingJetID [GeV]", 32, 60, 220)
+    addsel = addsel
     plotting.append((variable, binning, addsel))
 
     # hltCaloMET
@@ -1321,13 +1548,13 @@ if sections["higdijet"]:
     # hltCaloMETClean
     variable = ("hltCaloMETClean", "hltCaloMETClean.pt")
     binning = ("#scale[0.7]{HLT HBHENoiseCleaned} CaloMET [GeV]", 40, 0, 200)
-    addsel = "(hltCaloMET.pt>-99 && hltCaloMETClean.pt>-99 && Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>15)>1 && Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>50)>0 && hltCaloGlobal.dijet_maxpt>100 && hltCaloGlobal.dijet_mindphi_j40>0.5 && Sum$(abs(hltPFJetsL1FastL2L3.eta)<2.6 && hltPFJetsL1FastL2L3.pt>25)>1 && Sum$(abs(hltPFJetsL1FastL2L3.eta)<2.6 && hltPFJetsL1FastL2L3.pt>60)>0 && hltPFMET.pt>100)"
+    addsel = addsel
     plotting.append((variable, binning, addsel))
 
     # hltCaloMETCleanUsingJetID
     variable = ("hltCaloMETCleanUsingJetID", "hltCaloMETCleanUsingJetID.pt")
     binning = ("#scale[0.7]{HLT JetIDCleaned} CaloMET [GeV]", 40, 0, 200)
-    addsel = "(hltCaloMET.pt>-99 && hltCaloMETClean.pt>-99 && Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>15)>1 && Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>50)>0 && hltCaloGlobal.dijet_maxpt>100 && hltCaloGlobal.dijet_mindphi_j40>0.5 && Sum$(abs(hltPFJetsL1FastL2L3.eta)<2.6 && hltPFJetsL1FastL2L3.pt>25)>1 && Sum$(abs(hltPFJetsL1FastL2L3.eta)<2.6 && hltPFJetsL1FastL2L3.pt>60)>0 && hltPFMET.pt>100)"
+    addsel = addsel
     plotting.append((variable, binning, addsel))
 
     # hltPFJet
@@ -1338,7 +1565,22 @@ if sections["higdijet"]:
 
     variable = ("hltPFJetsL1FastL2L3NoPU_pt1", "Max$(hltPFJetsL1FastL2L3NoPU.pt)")
     binning = ("#scale[0.7]{HLT} Leading PFNoPUJet p_{T} [GeV]", 30, 0, 300)
-    addsel = "(hltCaloMET.pt>50 && hltCaloMETClean.pt>25 && Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>15)>1 && Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>50)>0 && hltCaloGlobal.dijet_maxpt>100 && hltCaloGlobal.dijet_mindphi_j40>0.5 && Sum$(abs(hltPFJetsL1FastL2L3.eta)<2.6 && hltPFJetsL1FastL2L3.pt>-99)>1 && Sum$(abs(hltPFJetsL1FastL2L3.eta)<2.6 && hltPFJetsL1FastL2L3.pt>-99)>0 && hltPFMET.pt>100)"
+    addsel = addsel
+    plotting.append((variable, binning, addsel))
+
+    variable = ("hltPFJetsL1FastL2L3_pt2", "MaxIf$(hltPFJetsL1FastL2L3.pt, hltPFJetsL1FastL2L3.pt!=Max$(hltPFJetsL1FastL2L3.pt))")
+    binning = ("#scale[0.7]{HLT} Subleading PFJet p_{T} [GeV]", 30, 0, 150)
+    addsel = addsel
+    plotting.append((variable, binning, addsel))
+
+    variable = ("hltPFJetsL1FastL2L3NoPU_pt2", "MaxIf$(hltPFJetsL1FastL2L3NoPU.pt, hltPFJetsL1FastL2L3NoPU.pt!=Max$(hltPFJetsL1FastL2L3NoPU.pt))")
+    binning = ("#scale[0.7]{HLT} Subleading PFNoPUJet p_{T} [GeV]", 30, 0, 150)
+    addsel = addsel
+    plotting.append((variable, binning, addsel))
+
+    variable = ("hltPFJetsL1FastL2L3_eta1", "Sum$(hltPFJetsL1FastL2L3.eta * (hltPFJetsL1FastL2L3.pt==Max$(hltPFJetsL1FastL2L3.pt)))")
+    binning = ("#scale[0.7]{HLT} Leading PFJet #eta", 20, -5, 5)
+    addsel = addsel
     plotting.append((variable, binning, addsel))
 
     # hltCaloJet
@@ -1346,6 +1588,125 @@ if sections["higdijet"]:
     binning = ("#scale[0.7]{HLT} Leading CaloJet p_{T} [GeV]", 30, 0, 150)
     addsel = "(hltCaloMET.pt>50 && hltCaloMETClean.pt>25 && Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>-99)>1 && Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>-99)>0 && hltCaloGlobal.dijet_maxpt>100 && hltCaloGlobal.dijet_mindphi_j40>0.5 && Sum$(abs(hltPFJetsL1FastL2L3.eta)<2.6 && hltPFJetsL1FastL2L3.pt>25)>1 && Sum$(abs(hltPFJetsL1FastL2L3.eta)<2.6 && hltPFJetsL1FastL2L3.pt>60)>0 && hltPFMET.pt>100)"
     plotting.append((variable, binning, addsel))
+
+    variable = ("hltCaloJetsL1Fast_pt2", "MaxIf$(hltCaloJetsL1Fast.pt, hltCaloJetsL1Fast.pt!=Max$(hltCaloJetsL1Fast.pt))")
+    binning = ("#scale[0.7]{HLT} Subleading CaloJet p_{T} [GeV]", 30, 0, 150)
+    addsel = addsel
+    plotting.append((variable, binning, addsel))
+
+    variable = ("hltCaloJetsL1Fast_eta1", "Sum$(hltCaloJetsL1Fast.eta * (hltCaloJetsL1Fast.pt==Max$(hltCaloJetsL1Fast.pt)))")
+    binning = ("#scale[0.7]{HLT} Leading CaloJet #eta", 20, -5, 5)
+    addsel = addsel
+    plotting.append((variable, binning, addsel))
+
+    # Dijet
+    variable = ("hltCaloJetsL1Fast_maxptjj", "hltCaloGlobal.dijet_maxpt")
+    binning = ("#scale[0.7]{HLT} Leading Calo dijet p_{T} [GeV]", 30, 0, 300)
+    addsel = "(hltCaloMET.pt>50 && hltCaloMETClean.pt>25 && Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>15)>1 && Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>50)>0 && hltCaloGlobal.dijet_maxpt>0 && hltCaloGlobal.dijet_mindphi_j40>0.5 && Sum$(abs(hltPFJetsL1FastL2L3.eta)<2.6 && hltPFJetsL1FastL2L3.pt>25)>1 && Sum$(abs(hltPFJetsL1FastL2L3.eta)<2.6 && hltPFJetsL1FastL2L3.pt>60)>0 && hltPFMET.pt>100)"
+    plotting.append((variable, binning, addsel))
+
+    variable = ("hltCaloJetsL1Fast_maxptjj_mjj", "hltCaloGlobal.dijet_maxpt_mjj")
+    binning = ("#scale[0.7]{HLT} Leading-p_{T} Calo dijet mass [GeV]", 25, 0, 250)
+    addsel = addsel
+    plotting.append((variable, binning, addsel))
+
+    variable = ("hltPFJetsL1FastL2L3_maxptjj", "hltPFGlobal.dijet_maxpt")
+    binning = ("#scale[0.7]{HLT} Leading PF dijet p_{T} [GeV]", 30, 0, 300)
+    addsel = addsel
+    plotting.append((variable, binning, addsel))
+
+    variable = ("hltPFJetsL1FastL2L3_maxptjj_mjj", "hltPFGlobal.dijet_maxpt_mjj")
+    binning = ("#scale[0.7]{HLT} Leading-p_{T} PF dijet mass [GeV]", 25, 0, 250)
+    addsel = addsel
+    plotting.append((variable, binning, addsel))
+
+    # mindphi
+    variable = ("hltCaloJetsL1Fast_mindphi_j30", "hltCaloGlobal.dijet_mindphi_j30")
+    binning = ("#scale[0.7]{HLT} Calo min #Delta#phi_{j30}(MET,jet)", 32, 0, 3.2)
+    addsel = "(hltCaloMET.pt>50 && hltCaloMETClean.pt>25 && Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>15)>1 && Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>50)>0 && hltCaloGlobal.dijet_maxpt>100 && hltCaloGlobal.dijet_mindphi_j40>-99 && Sum$(abs(hltPFJetsL1FastL2L3.eta)<2.6 && hltPFJetsL1FastL2L3.pt>25)>1 && Sum$(abs(hltPFJetsL1FastL2L3.eta)<2.6 && hltPFJetsL1FastL2L3.pt>60)>0 && hltPFMET.pt>100)"
+    plotting.append((variable, binning, addsel))
+
+    variable = ("hltCaloJetsL1Fast_mindphi_j40", "hltCaloGlobal.dijet_mindphi_j40")
+    binning = ("#scale[0.7]{HLT} Calo min #Delta#phi_{j40}(MET,jet)", 32, 0, 3.2)
+    addsel = addsel
+    plotting.append((variable, binning, addsel))
+
+    variable = ("hltCaloJetsL1Fast_mindphi_cj30", "hltCaloGlobal.dijet_mindphi_cj30")
+    binning = ("#scale[0.7]{HLT} Calo min #Delta#phi_{cj30}(MET,jet)", 32, 0, 3.2)
+    addsel = addsel
+    plotting.append((variable, binning, addsel))
+
+    variable = ("hltCaloJetsL1Fast_mindphi_cj40", "hltCaloGlobal.dijet_mindphi_cj40")
+    binning = ("#scale[0.7]{HLT} Calo min #Delta#phi_{cj40}(MET,jet)", 32, 0, 3.2)
+    addsel = addsel
+    plotting.append((variable, binning, addsel))
+
+    variable = ("hltCaloJetsL1Fast_mindphi_2cj", "hltCaloGlobal.dijet_mindphi_2cj")
+    binning = ("#scale[0.7]{HLT} Calo min #Delta#phi_{2cj}(MET,jet)", 32, 0, 3.2)
+    addsel = addsel
+    plotting.append((variable, binning, addsel))
+
+    variable = ("hltCaloJetsL1Fast_mindphi_3cj", "hltCaloGlobal.dijet_mindphi_3cj")
+    binning = ("#scale[0.7]{HLT} Calo min #Delta#phi_{3cj}(MET,jet)", 32, 0, 3.2)
+    addsel = addsel
+    plotting.append((variable, binning, addsel))
+
+    # (PF)
+    variable = ("hltPFJetsL1FastL2L3_mindphi_j30", "hltPFGlobal.dijet_mindphi_j30")
+    binning = ("#scale[0.7]{HLT} PF min #Delta#phi_{j30}(MET,jet)", 32, 0, 3.2)
+    addsel = addsel
+    plotting.append((variable, binning, addsel))
+
+    variable = ("hltPFJetsL1FastL2L3_mindphi_j40", "hltPFGlobal.dijet_mindphi_j40")
+    binning = ("#scale[0.7]{HLT} PF min #Delta#phi_{j40}(MET,jet)", 32, 0, 3.2)
+    addsel = addsel
+    plotting.append((variable, binning, addsel))
+
+    variable = ("hltPFJetsL1FastL2L3_mindphi_cj30", "hltPFGlobal.dijet_mindphi_cj30")
+    binning = ("#scale[0.7]{HLT} PF min #Delta#phi_{cj30}(MET,jet)", 32, 0, 3.2)
+    addsel = addsel
+    plotting.append((variable, binning, addsel))
+
+    variable = ("hltPFJetsL1FastL2L3_mindphi_cj40", "hltPFGlobal.dijet_mindphi_cj40")
+    binning = ("#scale[0.7]{HLT} PF min #Delta#phi_{cj40}(MET,jet)", 32, 0, 3.2)
+    addsel = addsel
+    plotting.append((variable, binning, addsel))
+
+    variable = ("hltPFJetsL1FastL2L3_mindphi_2cj", "hltPFGlobal.dijet_mindphi_2cj")
+    binning = ("#scale[0.7]{HLT} PF min #Delta#phi_{2cj}(MET,jet)", 32, 0, 3.2)
+    addsel = addsel
+    plotting.append((variable, binning, addsel))
+
+    variable = ("hltPFJetsL1FastL2L3_mindphi_3cj", "hltPFGlobal.dijet_mindphi_3cj")
+    binning = ("#scale[0.7]{HLT} PF min #Delta#phi_{3cj}(MET,jet)", 32, 0, 3.2)
+    addsel = addsel
+    plotting.append((variable, binning, addsel))
+
+    #___________________________________________________________________________
+    # hltTrackMET
+    variable = ("hltTrackMET", "hltTrackMET.pt")
+    binning = ("#scale[0.7]{HLT} TrackMET [GeV]", 30, 0, 150)
+    addsel = sel_trig1
+    plotting.append((variable, binning, addsel))
+
+    # hltTrackMETDPhi
+    variable = ("hltTrackMETDPhi", "abs(deltaPhi(hltPFMET.phi,hltTrackMET.phi))")
+    binning = ("#scale[0.7]{HLT} #Delta#phi(PFMET,TrackMET)", 32, 0, 3.2)
+    addsel = sel_trig1
+    plotting.append((variable, binning, addsel))
+
+    # nhf
+    variable = ("hltPFJetsL1FastL2L3_nhf1", "hltPFJetsL1FastL2L3[0].nhf")
+    binning = ("#scale[0.7]{HLT} Leading PFJet f_{en}(neutral HAD)", 40, 0, 1)
+    addsel = sel_trig1
+    plotting.append((variable, binning, addsel))
+
+    # nch
+    variable = ("hltPFJetsL1FastL2L3_nch1", "hltPFJetsL1FastL2L3[0].nch")
+    binning = ("#scale[0.7]{HLT} Leading PFJet # charged constits", 40, 0, 40)
+    addsel = sel_trig1
+    plotting.append((variable, binning, addsel))
+
 
     for p in plotting:
         (variable, binning, addsel) = p
@@ -1375,13 +1736,18 @@ if sections["susdijet"]:
 
     # hltPFMET
     variable = ("hltPFMET", "hltPFMET.pt")
-    binning = ("#scale[0.7]{HLT} PFMET [GeV]", 28, 60, 200)
+    binning = ("#scale[0.7]{HLT} PFMET [GeV]", 32, 60, 220)
     addsel = "(hltCaloMET.pt>80 && Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>20)>1 && Sum$(abs(hltPFJetsL1FastL2L3NoPU.eta)<2.6 && hltPFJetsL1FastL2L3NoPU.pt>50)>1 && (hltPFMET.pt>-99||hltPFMETNoMu.pt>-99) )"
     plotting.append((variable, binning, addsel))
 
     variable = ("hltPFMETNoMu", "hltPFMETNoMu.pt")
-    binning = ("#scale[0.7]{HLT} PFMETNoMu [GeV]", 28, 60, 200)
-    addsel = "(hltCaloMET.pt>80 && Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>20)>1 && Sum$(abs(hltPFJetsL1FastL2L3NoPU.eta)<2.6 && hltPFJetsL1FastL2L3NoPU.pt>50)>1 && (hltPFMET.pt>-99||hltPFMETNoMu.pt>-99) )"
+    binning = ("#scale[0.7]{HLT} PFMETNoMu [GeV]", 32, 60, 220)
+    addsel = addsel
+    plotting.append((variable, binning, addsel))
+
+    variable = ("hltPFMETCleanUsingJetID", "hltPFMETCleanUsingJetID.pt")
+    binning = ("#scale[0.7]{HLT} PFMETCleanUsingJetID [GeV]", 32, 60, 220)
+    addsel = addsel
     plotting.append((variable, binning, addsel))
 
     # hltCaloMET
@@ -1393,13 +1759,13 @@ if sections["susdijet"]:
     # hltCaloMETClean
     variable = ("hltCaloMETClean", "hltCaloMETClean.pt")
     binning = ("#scale[0.7]{HLT HBHENoiseCleaned} CaloMET [GeV]", 40, 0, 200)
-    addsel = "(hltCaloMET.pt>-99 && Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>20)>1 && Sum$(abs(hltPFJetsL1FastL2L3NoPU.eta)<2.6 && hltPFJetsL1FastL2L3NoPU.pt>50)>1 && (hltPFMET.pt>80||hltPFMETNoMu.pt>80) )"
+    addsel = addsel
     plotting.append((variable, binning, addsel))
 
     # hltCaloMETCleanUsingJetID
     variable = ("hltCaloMETCleanUsingJetID", "hltCaloMETCleanUsingJetID.pt")
     binning = ("#scale[0.7]{HLT JetIDCleaned} CaloMET [GeV]", 40, 0, 200)
-    addsel = "(hltCaloMET.pt>-99 && Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>20)>1 && Sum$(abs(hltPFJetsL1FastL2L3NoPU.eta)<2.6 && hltPFJetsL1FastL2L3NoPU.pt>50)>1 && (hltPFMET.pt>80||hltPFMETNoMu.pt>80) )"
+    addsel = addsel
     plotting.append((variable, binning, addsel))
 
     # hltPFJet
@@ -1410,7 +1776,22 @@ if sections["susdijet"]:
 
     variable = ("hltPFJetsL1FastL2L3NoPU_pt1", "Max$(hltPFJetsL1FastL2L3NoPU.pt)")
     binning = ("#scale[0.7]{HLT} Leading PFNoPUJet p_{T} [GeV]", 30, 0, 300)
-    addsel = "(hltCaloMET.pt>80 && Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>20)>1 && Sum$(abs(hltPFJetsL1FastL2L3NoPU.eta)<2.6 && hltPFJetsL1FastL2L3NoPU.pt>-99)>1 && (hltPFMET.pt>80||hltPFMETNoMu.pt>80) )"
+    addsel = addsel
+    plotting.append((variable, binning, addsel))
+
+    variable = ("hltPFJetsL1FastL2L3_pt2", "MaxIf$(hltPFJetsL1FastL2L3.pt, hltPFJetsL1FastL2L3.pt!=Max$(hltPFJetsL1FastL2L3.pt))")
+    binning = ("#scale[0.7]{HLT} Subleading PFJet p_{T} [GeV]", 30, 0, 150)
+    addsel = addsel
+    plotting.append((variable, binning, addsel))
+
+    variable = ("hltPFJetsL1FastL2L3NoPU_pt2", "MaxIf$(hltPFJetsL1FastL2L3NoPU.pt, hltPFJetsL1FastL2L3NoPU.pt!=Max$(hltPFJetsL1FastL2L3NoPU.pt))")
+    binning = ("#scale[0.7]{HLT} Subleading PFNoPUJet p_{T} [GeV]", 30, 0, 150)
+    addsel = addsel
+    plotting.append((variable, binning, addsel))
+
+    variable = ("hltPFJetsL1FastL2L3_eta1", "Sum$(hltPFJetsL1FastL2L3.eta * (hltPFJetsL1FastL2L3.pt==Max$(hltPFJetsL1FastL2L3.pt)))")
+    binning = ("#scale[0.7]{HLT} Leading PFJet #eta", 20, -5, 5)
+    addsel = addsel
     plotting.append((variable, binning, addsel))
 
     # hltCaloJet
@@ -1418,6 +1799,53 @@ if sections["susdijet"]:
     binning = ("#scale[0.7]{HLT} Leading CaloJet p_{T} [GeV]", 30, 0, 150)
     addsel = "(hltCaloMET.pt>80 && Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>-99)>1 && Sum$(abs(hltPFJetsL1FastL2L3NoPU.eta)<2.6 && hltPFJetsL1FastL2L3NoPU.pt>50)>1 && (hltPFMET.pt>80||hltPFMETNoMu.pt>80) )"
     plotting.append((variable, binning, addsel))
+
+    variable = ("hltCaloJetsL1Fast_pt2", "MaxIf$(hltCaloJetsL1Fast.pt, hltCaloJetsL1Fast.pt!=Max$(hltCaloJetsL1Fast.pt))")
+    binning = ("#scale[0.7]{HLT} Subleading CaloJet p_{T} [GeV]", 30, 0, 150)
+    addsel = addsel
+    plotting.append((variable, binning, addsel))
+
+    variable = ("hltCaloJetsL1Fast_eta1", "Sum$(hltCaloJetsL1Fast.eta * (hltCaloJetsL1Fast.pt==Max$(hltCaloJetsL1Fast.pt)))")
+    binning = ("#scale[0.7]{HLT} Leading CaloJet #eta", 20, -5, 5)
+    addsel = addsel
+    plotting.append((variable, binning, addsel))
+
+    #___________________________________________________________________________
+    # hltTrackMET
+    variable = ("hltTrackMET", "hltTrackMET.pt")
+    binning = ("#scale[0.7]{HLT} TrackMET [GeV]", 30, 0, 150)
+    addsel = sel_trig1
+    plotting.append((variable, binning, addsel))
+
+    # hltTrackMETDPhi
+    variable = ("hltTrackMETDPhi", "abs(deltaPhi(hltPFMET.phi,hltTrackMET.phi))")
+    binning = ("#scale[0.7]{HLT} #Delta#phi(PFMET,TrackMET)", 32, 0, 3.2)
+    addsel = sel_trig1
+    plotting.append((variable, binning, addsel))
+
+    # nhf
+    variable = ("hltPFJetsL1FastL2L3_nhf1", "hltPFJetsL1FastL2L3[0].nhf")
+    binning = ("#scale[0.7]{HLT} Leading PFJet f_{en}(neutral HAD)", 40, 0, 1)
+    addsel = sel_trig1
+    plotting.append((variable, binning, addsel))
+
+    # nch
+    variable = ("hltPFJetsL1FastL2L3_nch1", "hltPFJetsL1FastL2L3[0].nch")
+    binning = ("#scale[0.7]{HLT} Leading PFJet # charged constits", 40, 0, 40)
+    addsel = sel_trig1
+    plotting.append((variable, binning, addsel))
+
+    # mindphi
+    variable = ("hltPFJetsL1FastL2L3_mindphi_2cj", "hltPFGlobal.dijet_mindphi_2cj")
+    binning = ("#scale[0.7]{HLT} PF min #Delta#phi_{2cj}(MET,jet)", 32, 0, 3.2)
+    addsel = sel_trig1
+    plotting.append((variable, binning, addsel))
+
+    variable = ("hltPFJetsL1FastL2L3_mindphi_3cj", "hltPFGlobal.dijet_mindphi_3cj")
+    binning = ("#scale[0.7]{HLT} PF min #Delta#phi_{3cj}(MET,jet)", 32, 0, 3.2)
+    addsel = sel_trig1
+    plotting.append((variable, binning, addsel))
+
 
     for p in plotting:
         (variable, binning, addsel) = p
@@ -1453,43 +1881,120 @@ if sections["multijet"]:
 
     variable = ("hltPFMETNoMu", "hltPFMETNoMu.pt")
     binning = ("#scale[0.7]{HLT} PFMETNoMu [GeV]", 34, 80, 250)
-    addsel = "(hltCaloHTMHT.sumEt>300 && hltCaloHTMHT.pt>75 && hltPFHTMHTNoPU.sumEt>350 && (hltCaloHTMHT.pt>150 || hltPFMET.pt>-99))"
+    addsel = addsel
+    plotting.append((variable, binning, addsel))
+
+    variable = ("hltPFMETCleanUsingJetID", "hltPFMETCleanUsingJetID.pt")
+    binning = ("#scale[0.7]{HLT} PFMETCleanUsingJetID [GeV]", 34, 80, 250)
+    addsel = addsel
+    plotting.append((variable, binning, addsel))
+
+    # hltPFHTNoPU
+    variable = ("hltPFHTNoPU", "hltPFHTMHTNoPU.sumEt")
+    binning = ("#scale[0.7]{HLT} PFHTNoPU [GeV]", 28, 300, 860)
+    addsel = "(hltCaloHTMHT.sumEt>300 && hltCaloHTMHT.pt>75 && hltPFHTMHTNoPU.sumEt>-99 && (hltCaloHTMHT.pt>150 || hltPFMET.pt>100))"
+    plotting.append((variable, binning, addsel))
+
+    # hltCaloHT
+    variable = ("hltCaloHT", "hltCaloHTMHT.sumEt")
+    binning = ("#scale[0.7]{HLT} CaloHT [GeV]", 28, 250, 810)
+    addsel = "(hltCaloHTMHT.sumEt>-99 && hltCaloHTMHT.pt>75 && hltPFHTMHTNoPU.sumEt>350 && (hltCaloHTMHT.pt>150 || hltPFMET.pt>100))"
+    plotting.append((variable, binning, addsel))
+
+    # hltCaloMHT
+    variable = ("hltCaloMHT", "hltCaloHTMHT.pt")
+    binning = ("#scale[0.7]{HLT} CaloMHT [GeV]", 40, 50, 250)
+    addsel = "(hltCaloHTMHT.sumEt>300 && hltCaloHTMHT.pt>-99 && hltPFHTMHTNoPU.sumEt>350 && (hltCaloHTMHT.pt>-99 || hltPFMET.pt>100))"
+    plotting.append((variable, binning, addsel))
+
+    #___________________________________________________________________________
+    # l1MET
+    variable = ("l1MET", "l1MET.pt")
+    binning = ("#scale[0.7]{L1T} MET [GeV]", 30, 0, 150)
+    addsel = sel_trig1
+    plotting.append((variable, binning, addsel))
+
+    # l1HTT
+    variable = ("l1HTT", "l1HTT.sumEt")
+    binning = ("#scale[0.7]{L1T} HTT [GeV]", 30, 100, 400)
+    addsel = sel_trig1
     plotting.append((variable, binning, addsel))
 
     # hltCaloMET
     variable = ("hltCaloMET", "hltCaloMET.pt")
     binning = ("#scale[0.7]{HLT} CaloMET [GeV]", 40, 0, 200)
-    addsel = "(hltCaloHTMHT.sumEt>300 && hltCaloHTMHT.pt>75 && hltPFHTMHTNoPU.sumEt>350 && (hltCaloHTMHT.pt>150 || hltPFMET.pt>100))"
+    addsel = sel_trig1
     plotting.append((variable, binning, addsel))
 
     # hltCaloMETClean
     variable = ("hltCaloMETClean", "hltCaloMETClean.pt")
     binning = ("#scale[0.7]{HLT HBHENoiseCleaned} CaloMET [GeV]", 40, 0, 200)
-    addsel = "(hltCaloHTMHT.sumEt>300 && hltCaloHTMHT.pt>75 && hltPFHTMHTNoPU.sumEt>350 && (hltCaloHTMHT.pt>150 || hltPFMET.pt>100))"
+    addsel = sel_trig1
     plotting.append((variable, binning, addsel))
 
     # hltCaloMETCleanUsingJetID
     variable = ("hltCaloMETCleanUsingJetID", "hltCaloMETCleanUsingJetID.pt")
     binning = ("#scale[0.7]{HLT JetIDCleaned} CaloMET [GeV]", 40, 0, 200)
-    addsel = "(hltCaloHTMHT.sumEt>300 && hltCaloHTMHT.pt>75 && hltPFHTMHTNoPU.sumEt>350 && (hltCaloHTMHT.pt>150 || hltPFMET.pt>100))"
+    addsel = sel_trig1
     plotting.append((variable, binning, addsel))
 
     # hltPFJet
-    variable = ("hltPFJetsL1FastL2L3_pt1", "Max$(hltPFJetsL1FastL2L3.pt)")
-    binning = ("#scale[0.7]{HLT} Leading PFJet p_{T} [GeV]", 40, 0, 400)
-    addsel = "(hltCaloHTMHT.sumEt>300 && hltCaloHTMHT.pt>75 && hltPFHTMHTNoPU.sumEt>350 && (hltCaloHTMHT.pt>150 || hltPFMET.pt>100))"
-    plotting.append((variable, binning, addsel))
-
     variable = ("hltPFJetsL1FastL2L3NoPU_pt1", "Max$(hltPFJetsL1FastL2L3NoPU.pt)")
     binning = ("#scale[0.7]{HLT} Leading PFNoPUJet p_{T} [GeV]", 40, 0, 400)
-    addsel = "(hltCaloHTMHT.sumEt>300 && hltCaloHTMHT.pt>75 && hltPFHTMHTNoPU.sumEt>350 && (hltCaloHTMHT.pt>150 || hltPFMET.pt>100))"
+    addsel = sel_trig1
+    plotting.append((variable, binning, addsel))
+
+    variable = ("hltPFJetsL1FastL2L3NoPU_pt2", "MaxIf$(hltPFJetsL1FastL2L3NoPU.pt, hltPFJetsL1FastL2L3NoPU.pt!=Max$(hltPFJetsL1FastL2L3NoPU.pt))")
+    binning = ("#scale[0.7]{HLT} Subleading PFNoPUJet p_{T} [GeV]", 40, 0, 200)
+    addsel = sel_trig1
+    plotting.append((variable, binning, addsel))
+
+    variable = ("hltPFJetsL1FastL2L3NoPU_eta1", "Sum$(hltPFJetsL1FastL2L3NoPU.eta * (hltPFJetsL1FastL2L3NoPU.pt==Max$(hltPFJetsL1FastL2L3NoPU.pt)))")
+    binning = ("#scale[0.7]{HLT} Leading PFNoPUJet #eta", 20, -5, 5)
+    addsel = addsel
     plotting.append((variable, binning, addsel))
 
     # hltCaloJet
     variable = ("hltCaloJetsL1Fast_pt1", "Max$(hltCaloJetsL1Fast.pt)")
     binning = ("#scale[0.7]{HLT} Leading CaloJet p_{T} [GeV]", 40, 0, 400)
-    addsel = "(hltCaloHTMHT.sumEt>300 && hltCaloHTMHT.pt>75 && hltPFHTMHTNoPU.sumEt>350 && (hltCaloHTMHT.pt>150 || hltPFMET.pt>100))"
+    addsel = sel_trig1
     plotting.append((variable, binning, addsel))
+
+    # hltTrackMET
+    variable = ("hltTrackMET", "hltTrackMET.pt")
+    binning = ("#scale[0.7]{HLT} TrackMET [GeV]", 30, 0, 150)
+    addsel = sel_trig1
+    plotting.append((variable, binning, addsel))
+
+    # hltTrackMETDPhi
+    variable = ("hltTrackMETDPhi", "abs(deltaPhi(hltPFMET.phi,hltTrackMET.phi))")
+    binning = ("#scale[0.7]{HLT} #Delta#phi(PFMET,TrackMET)", 32, 0, 3.2)
+    addsel = sel_trig1
+    plotting.append((variable, binning, addsel))
+
+    # nhf
+    variable = ("hltPFJetsL1FastL2L3_nhf1", "hltPFJetsL1FastL2L3[0].nhf")
+    binning = ("#scale[0.7]{HLT} Leading PFJet f_{en}(neutral HAD)", 40, 0, 1)
+    addsel = sel_trig1
+    plotting.append((variable, binning, addsel))
+
+    # nch
+    variable = ("hltPFJetsL1FastL2L3_nch1", "hltPFJetsL1FastL2L3[0].nch")
+    binning = ("#scale[0.7]{HLT} Leading PFJet # charged constits", 40, 0, 40)
+    addsel = sel_trig1
+    plotting.append((variable, binning, addsel))
+
+    # mindphi
+    variable = ("hltPFJetsL1FastL2L3_mindphi_2cj", "hltPFGlobal.dijet_mindphi_2cj")
+    binning = ("#scale[0.7]{HLT} PF min #Delta#phi_{2cj}(MET,jet)", 32, 0, 3.2)
+    addsel = sel_trig1
+    plotting.append((variable, binning, addsel))
+
+    variable = ("hltPFJetsL1FastL2L3_mindphi_3cj", "hltPFGlobal.dijet_mindphi_3cj")
+    binning = ("#scale[0.7]{HLT} PF min #Delta#phi_{3cj}(MET,jet)", 32, 0, 3.2)
+    addsel = sel_trig1
+    plotting.append((variable, binning, addsel))
+
 
     for p in plotting:
         (variable, binning, addsel) = p
@@ -1509,7 +2014,7 @@ if sections["multijet"]:
 if sections["bjet"]:
     if plotting: del plotting[:]
 
-    kColor = kCyan
+    kColor = kBoson
     kTrig = "btag"
 
     sel = "(triggerFlags[%i])" % ireftrig
@@ -1521,13 +2026,18 @@ if sections["bjet"]:
 
     # hltPFMET
     variable = ("hltPFMET", "hltPFMET.pt")
-    binning = ("#scale[0.7]{HLT} PFMET [GeV]", 28, 60, 200)
+    binning = ("#scale[0.7]{HLT} PFMET [GeV]", 32, 60, 220)
     addsel = "(hltCaloMET.pt>65 && Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>20)>1 && hltCaloGlobal.bjet_maxcsv>0.7 && Sum$(abs(hltPFJetsL1FastL2L3.eta)<2.6 && hltPFJetsL1FastL2L3.pt>30)>1 && hltPFMET.pt>-99)"
     plotting.append((variable, binning, addsel))
 
     variable = ("hltPFMETNoMu", "hltPFMETNoMu.pt")
-    binning = ("#scale[0.7]{HLT} PFMETNoMu [GeV]", 28, 60, 200)
-    addsel = "(hltCaloMET.pt>65 && Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>20)>1 && hltCaloGlobal.bjet_maxcsv>0.7 && Sum$(abs(hltPFJetsL1FastL2L3.eta)<2.6 && hltPFJetsL1FastL2L3.pt>30)>1 && hltPFMET.pt>-99)"
+    binning = ("#scale[0.7]{HLT} PFMETNoMu [GeV]", 32, 60, 220)
+    addsel = addsel
+    plotting.append((variable, binning, addsel))
+
+    variable = ("hltPFMETCleanUsingJetID", "hltPFMETCleanUsingJetID.pt")
+    binning = ("#scale[0.7]{HLT} PFMETCleanUsingJetID [GeV]", 32, 60, 220)
+    addsel = addsel
     plotting.append((variable, binning, addsel))
 
     # hltCaloMET
@@ -1539,13 +2049,13 @@ if sections["bjet"]:
     # hltCaloMETClean
     variable = ("hltCaloMETClean", "hltCaloMETClean.pt")
     binning = ("#scale[0.7]{HLT HBHENoiseCleaned} CaloMET [GeV]", 40, 0, 200)
-    addsel = "(hltCaloMET.pt>-99 && Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>20)>1 && hltCaloGlobal.bjet_maxcsv>0.7 && Sum$(abs(hltPFJetsL1FastL2L3.eta)<2.6 && hltPFJetsL1FastL2L3.pt>30)>1 && hltPFMET.pt>80)"
+    addsel = addsel
     plotting.append((variable, binning, addsel))
 
     # hltCaloMETCleanUsingJetID
     variable = ("hltCaloMETCleanUsingJetID", "hltCaloMETCleanUsingJetID.pt")
     binning = ("#scale[0.7]{HLT JetIDCleaned} CaloMET [GeV]", 40, 0, 200)
-    addsel = "(hltCaloMET.pt>-99 && Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>20)>1 && hltCaloGlobal.bjet_maxcsv>0.7 && Sum$(abs(hltPFJetsL1FastL2L3.eta)<2.6 && hltPFJetsL1FastL2L3.pt>30)>1 && hltPFMET.pt>80)"
+    addsel = addsel
     plotting.append((variable, binning, addsel))
 
     # hltPFJet
@@ -1556,7 +2066,22 @@ if sections["bjet"]:
 
     variable = ("hltPFJetsL1FastL2L3NoPU_pt1", "Max$(hltPFJetsL1FastL2L3NoPU.pt)")
     binning = ("#scale[0.7]{HLT} Leading PFNoPUJet p_{T} [GeV]", 30, 0, 300)
-    addsel = "(hltCaloMET.pt>65 && Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>20)>1 && hltCaloGlobal.bjet_maxcsv>0.7 && Sum$(abs(hltPFJetsL1FastL2L3.eta)<2.6 && hltPFJetsL1FastL2L3.pt>-99)>1 && hltPFMET.pt>80)"
+    addsel = addsel
+    plotting.append((variable, binning, addsel))
+
+    variable = ("hltPFJetsL1FastL2L3_pt2", "MaxIf$(hltPFJetsL1FastL2L3.pt, hltPFJetsL1FastL2L3.pt!=Max$(hltPFJetsL1FastL2L3.pt))")
+    binning = ("#scale[0.7]{HLT} Subleading PFJet p_{T} [GeV]", 30, 0, 150)
+    addsel = addsel
+    plotting.append((variable, binning, addsel))
+
+    variable = ("hltPFJetsL1FastL2L3NoPU_pt2", "MaxIf$(hltPFJetsL1FastL2L3NoPU.pt, hltPFJetsL1FastL2L3NoPU.pt!=Max$(hltPFJetsL1FastL2L3NoPU.pt))")
+    binning = ("#scale[0.7]{HLT} Subleading PFNoPUJet p_{T} [GeV]", 30, 0, 150)
+    addsel = addsel
+    plotting.append((variable, binning, addsel))
+
+    variable = ("hltPFJetsL1FastL2L3_eta1", "Sum$(hltPFJetsL1FastL2L3.eta * (hltPFJetsL1FastL2L3.pt==Max$(hltPFJetsL1FastL2L3.pt)))")
+    binning = ("#scale[0.7]{HLT} Leading PFJet #eta", 20, -5, 5)
+    addsel = addsel
     plotting.append((variable, binning, addsel))
 
     # hltCaloJet
@@ -1564,6 +2089,64 @@ if sections["bjet"]:
     binning = ("#scale[0.7]{HLT} Leading CaloJet p_{T} [GeV]", 30, 0, 150)
     addsel = "(hltCaloMET.pt>65 && Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>-99)>1 && hltCaloGlobal.bjet_maxcsv>0.7 && Sum$(abs(hltPFJetsL1FastL2L3.eta)<2.6 && hltPFJetsL1FastL2L3.pt>30)>1 && hltPFMET.pt>80)"
     plotting.append((variable, binning, addsel))
+
+    variable = ("hltCaloJetsL1Fast_pt2", "MaxIf$(hltCaloJetsL1Fast.pt, hltCaloJetsL1Fast.pt!=Max$(hltCaloJetsL1Fast.pt))")
+    binning = ("#scale[0.7]{HLT} Subleading CaloJet p_{T} [GeV]", 30, 0, 150)
+    addsel = addsel
+    plotting.append((variable, binning, addsel))
+
+    variable = ("hltCaloJetsL1Fast_eta1", "Sum$(hltCaloJetsL1Fast.eta * (hltCaloJetsL1Fast.pt==Max$(hltCaloJetsL1Fast.pt)))")
+    binning = ("#scale[0.7]{HLT} Leading CaloJet #eta", 20, -5, 5)
+    addsel = addsel
+    plotting.append((variable, binning, addsel))
+
+    # maxcsv
+    variable = ("hltCaloJetsL1Fast_maxcsv", "hltCaloGlobal.bjet_maxcsv")
+    binning = ("#scale[0.7]{HLT} CaloJet max CSV", 22, 0, 1.1)
+    addsel = "(hltCaloMET.pt>65 && Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>20)>1 && hltCaloGlobal.bjet_maxcsv>-99 && Sum$(abs(hltPFJetsL1FastL2L3.eta)<2.6 && hltPFJetsL1FastL2L3.pt>30)>1 && hltPFMET.pt>80)"
+    plotting.append((variable, binning, addsel))
+
+    variable = ("hltCaloJetsL1Fast_maxcsv2", "hltCaloGlobal.bjet_maxcsv2")
+    binning = ("#scale[0.7]{HLT} CaloJet 2nd max CSV", 22, 0, 1.1)
+    addsel = addsel
+    plotting.append((variable, binning, addsel))
+
+    #___________________________________________________________________________
+    # hltTrackMET
+    variable = ("hltTrackMET", "hltTrackMET.pt")
+    binning = ("#scale[0.7]{HLT} TrackMET [GeV]", 30, 0, 150)
+    addsel = sel_trig1
+    plotting.append((variable, binning, addsel))
+
+    # hltTrackMETDPhi
+    variable = ("hltTrackMETDPhi", "abs(deltaPhi(hltPFMET.phi,hltTrackMET.phi))")
+    binning = ("#scale[0.7]{HLT} #Delta#phi(PFMET,TrackMET)", 32, 0, 3.2)
+    addsel = sel_trig1
+    plotting.append((variable, binning, addsel))
+
+    # nhf
+    variable = ("hltPFJetsL1FastL2L3_nhf1", "hltPFJetsL1FastL2L3[0].nhf")
+    binning = ("#scale[0.7]{HLT} Leading PFJet f_{en}(neutral HAD)", 40, 0, 1)
+    addsel = sel_trig1
+    plotting.append((variable, binning, addsel))
+
+    # nch
+    variable = ("hltPFJetsL1FastL2L3_nch1", "hltPFJetsL1FastL2L3[0].nch")
+    binning = ("#scale[0.7]{HLT} Leading PFJet # charged constits", 40, 0, 40)
+    addsel = sel_trig1
+    plotting.append((variable, binning, addsel))
+
+    # mindphi
+    variable = ("hltPFJetsL1FastL2L3_mindphi_2cj", "hltPFGlobal.dijet_mindphi_2cj")
+    binning = ("#scale[0.7]{HLT} PF min #Delta#phi_{2cj}(MET,jet)", 32, 0, 3.2)
+    addsel = sel_trig1
+    plotting.append((variable, binning, addsel))
+
+    variable = ("hltPFJetsL1FastL2L3_mindphi_3cj", "hltPFGlobal.dijet_mindphi_3cj")
+    binning = ("#scale[0.7]{HLT} PF min #Delta#phi_{3cj}(MET,jet)", 32, 0, 3.2)
+    addsel = sel_trig1
+    plotting.append((variable, binning, addsel))
+
 
     for p in plotting:
         (variable, binning, addsel) = p
@@ -1583,61 +2166,126 @@ if sections["bjet"]:
 if sections["vbf"]:
     if plotting: del plotting[:]
 
-    kColor = kMagenta
+    kColor = kQuark
     kTrig = "VBFAll"
 
     sel = "(triggerFlags[%i])" % ireftrig
     sel_noNoise = "(metfilterFlags[%i])" % len(metfilters)
     #sel_trig0 = ("(triggerFlags[%i])" %(triggers.index('HLT_DiPFJet40_PFMETnoMu65_MJJ600VBF_LeadingJets_v9')) )
-    #sel_trig1 = "(hltCaloMET.pt>65 && Sum$(abs(hltCaloJetsL1Fast.eta)<5.0 && hltCaloJetsL1Fast.pt>30)>1 && hltPFGlobal.vbf_leadmjj>600 && hltPFGlobal.vbf_leadmjj_deta>3.5 && hltPFMETNoMu.pt>65)"
+    #sel_trig1 = "(hltCaloMET.pt>65 && Sum$(abs(hltCaloJetsL1Fast.eta)<5.0 && hltCaloJetsL1Fast.pt>30)>1 && Sum$(abs(hltPFJetsL1FastL2L3.eta)<5.0 && hltPFJetsL1FastL2L3.pt>40)>1 && hltPFGlobal.vbf_leadmjj>600 && hltPFGlobal.vbf_leadmjj_deta>3.5 && hltPFMETNoMu.pt>65)"
     sel_trig0 = ("(triggerFlags[%i])" %(triggers.index('HLT_DiPFJet40_PFMETnoMu65_MJJ800VBF_AllJets_v9')) )
-    sel_trig1 = "(hltCaloMET.pt>65 && Sum$(abs(hltCaloJetsL1Fast.eta)<5.0 && hltCaloJetsL1Fast.pt>30)>1 && hltPFGlobal.vbf_maxmjj>800 && hltPFGlobal.vbf_maxmjj_deta>3.5 && hltPFMETNoMu.pt>65)"
+    sel_trig1 = "(hltCaloMET.pt>65 && Sum$(abs(hltCaloJetsL1Fast.eta)<5.0 && hltCaloJetsL1Fast.pt>30)>1 && Sum$(abs(hltPFJetsL1FastL2L3.eta)<5.0 && hltPFJetsL1FastL2L3.pt>40)>1 && hltPFGlobal.vbf_maxmjj>800 && hltPFGlobal.vbf_maxmjj_deta>3.5 && hltPFMETNoMu.pt>65)"
 
     # hltPFMET
     variable = ("hltPFMET", "hltPFMET.pt")
-    binning = ("#scale[0.7]{HLT} PFMET [GeV]", 26, 50, 180)
-    addsel = "(hltCaloMET.pt>65 && Sum$(abs(hltCaloJetsL1Fast.eta)<5.0 && hltCaloJetsL1Fast.pt>30)>1 && hltPFGlobal.vbf_maxmjj>800 && hltPFGlobal.vbf_maxmjj_deta>3.5 && hltPFMETNoMu.pt>-99)"
+    binning = ("#scale[0.7]{HLT} PFMET [GeV]", 30, 50, 200)
+    addsel = "(hltCaloMET.pt>65 && Sum$(abs(hltCaloJetsL1Fast.eta)<5.0 && hltCaloJetsL1Fast.pt>30)>1 && Sum$(abs(hltPFJetsL1FastL2L3.eta)<5.0 && hltPFJetsL1FastL2L3.pt>40)>1 && hltPFGlobal.vbf_maxmjj>800 && hltPFGlobal.vbf_maxmjj_deta>3.5 && hltPFMETNoMu.pt>-99)"
     plotting.append((variable, binning, addsel))
 
     variable = ("hltPFMETNoMu", "hltPFMETNoMu.pt")
-    binning = ("#scale[0.7]{HLT} PFMETNoMu [GeV]", 26, 50, 180)
-    addsel = "(hltCaloMET.pt>65 && Sum$(abs(hltCaloJetsL1Fast.eta)<5.0 && hltCaloJetsL1Fast.pt>30)>1 && hltPFGlobal.vbf_maxmjj>800 && hltPFGlobal.vbf_maxmjj_deta>3.5 && hltPFMETNoMu.pt>-99)"
+    binning = ("#scale[0.7]{HLT} PFMETNoMu [GeV]", 30, 50, 200)
+    addsel = addsel
+    plotting.append((variable, binning, addsel))
+
+    variable = ("hltPFMETCleanUsingJetID", "hltPFMETCleanUsingJetID.pt")
+    binning = ("#scale[0.7]{HLT} PFMETCleanUsingJetID [GeV]", 30, 50, 200)
+    addsel = addsel
     plotting.append((variable, binning, addsel))
 
     # hltCaloMET
     variable = ("hltCaloMET", "hltCaloMET.pt")
     binning = ("#scale[0.7]{HLT} CaloMET [GeV]", 40, 0, 200)
-    addsel = "(hltCaloMET.pt>-99 && Sum$(abs(hltCaloJetsL1Fast.eta)<5.0 && hltCaloJetsL1Fast.pt>30)>1 && hltPFGlobal.vbf_maxmjj>800 && hltPFGlobal.vbf_maxmjj_deta>3.5 && hltPFMETNoMu.pt>65)"
+    addsel = "(hltCaloMET.pt>-99 && Sum$(abs(hltCaloJetsL1Fast.eta)<5.0 && hltCaloJetsL1Fast.pt>30)>1 && Sum$(abs(hltPFJetsL1FastL2L3.eta)<5.0 && hltPFJetsL1FastL2L3.pt>40)>1 && hltPFGlobal.vbf_maxmjj>800 && hltPFGlobal.vbf_maxmjj_deta>3.5 && hltPFMETNoMu.pt>65)"
     plotting.append((variable, binning, addsel))
 
     # hltCaloMETClean
     variable = ("hltCaloMETClean", "hltCaloMETClean.pt")
     binning = ("#scale[0.7]{HLT HBHENoiseCleaned} CaloMET [GeV]", 40, 0, 200)
-    addsel = "(hltCaloMET.pt>-99 && Sum$(abs(hltCaloJetsL1Fast.eta)<5.0 && hltCaloJetsL1Fast.pt>30)>1 && hltPFGlobal.vbf_maxmjj>800 && hltPFGlobal.vbf_maxmjj_deta>3.5 && hltPFMETNoMu.pt>65)"
+    addsel = addsel
     plotting.append((variable, binning, addsel))
 
     # hltCaloMETCleanUsingJetID
     variable = ("hltCaloMETCleanUsingJetID", "hltCaloMETCleanUsingJetID.pt")
     binning = ("#scale[0.7]{HLT JetIDCleaned} CaloMET [GeV]", 40, 0, 200)
-    addsel = "(hltCaloMET.pt>-99 && Sum$(abs(hltCaloJetsL1Fast.eta)<5.0 && hltCaloJetsL1Fast.pt>30)>1 && hltPFGlobal.vbf_maxmjj>800 && hltPFGlobal.vbf_maxmjj_deta>3.5 && hltPFMETNoMu.pt>65)"
+    addsel = addsel
     plotting.append((variable, binning, addsel))
 
     # hltPFJet
     variable = ("hltPFJetsL1FastL2L3_pt1", "Max$(hltPFJetsL1FastL2L3.pt)")
     binning = ("#scale[0.7]{HLT} Leading PFJet p_{T} [GeV]", 30, 0, 300)
-    addsel = "(hltCaloMET.pt>65 && Sum$(abs(hltCaloJetsL1Fast.eta)<5.0 && hltCaloJetsL1Fast.pt>30)>1 && hltPFGlobal.vbf_maxmjj>800 && hltPFGlobal.vbf_maxmjj_deta>3.5 && hltPFMETNoMu.pt>65)"
+    addsel = "(hltCaloMET.pt>65 && Sum$(abs(hltCaloJetsL1Fast.eta)<5.0 && hltCaloJetsL1Fast.pt>30)>1 && Sum$(abs(hltPFJetsL1FastL2L3.eta)<5.0 && hltPFJetsL1FastL2L3.pt>-99)>1 && hltPFGlobal.vbf_maxmjj>800 && hltPFGlobal.vbf_maxmjj_deta>3.5 && hltPFMETNoMu.pt>65)"
     plotting.append((variable, binning, addsel))
 
     variable = ("hltPFJetsL1FastL2L3NoPU_pt1", "Max$(hltPFJetsL1FastL2L3NoPU.pt)")
     binning = ("#scale[0.7]{HLT} Leading PFNoPUJet p_{T} [GeV]", 30, 0, 300)
-    addsel = "(hltCaloMET.pt>65 && Sum$(abs(hltCaloJetsL1Fast.eta)<5.0 && hltCaloJetsL1Fast.pt>30)>1 && hltPFGlobal.vbf_maxmjj>800 && hltPFGlobal.vbf_maxmjj_deta>3.5 && hltPFMETNoMu.pt>65)"
+    addsel = addsel
+    plotting.append((variable, binning, addsel))
+
+    variable = ("hltPFJetsL1FastL2L3_pt2", "MaxIf$(hltPFJetsL1FastL2L3.pt, hltPFJetsL1FastL2L3.pt!=Max$(hltPFJetsL1FastL2L3.pt))")
+    binning = ("#scale[0.7]{HLT} Subleading PFJet p_{T} [GeV]", 30, 0, 150)
+    addsel = addsel
+    plotting.append((variable, binning, addsel))
+
+    variable = ("hltPFJetsL1FastL2L3NoPU_pt2", "MaxIf$(hltPFJetsL1FastL2L3NoPU.pt, hltPFJetsL1FastL2L3NoPU.pt!=Max$(hltPFJetsL1FastL2L3NoPU.pt))")
+    binning = ("#scale[0.7]{HLT} Subleading PFNoPUJet p_{T} [GeV]", 30, 0, 150)
+    addsel = addsel
+    plotting.append((variable, binning, addsel))
+
+    variable = ("hltPFJetsL1FastL2L3_eta1", "Sum$(hltPFJetsL1FastL2L3.eta * (hltPFJetsL1FastL2L3.pt==Max$(hltPFJetsL1FastL2L3.pt)))")
+    binning = ("#scale[0.7]{HLT} Leading PFJet #eta", 20, -5, 5)
+    addsel = addsel
     plotting.append((variable, binning, addsel))
 
     # hltCaloJet
     variable = ("hltCaloJetsL1Fast_pt1", "Max$(hltCaloJetsL1Fast.pt)")
     binning = ("#scale[0.7]{HLT} Leading CaloJet p_{T} [GeV]", 30, 0, 150)
-    addsel = "(hltCaloMET.pt>65 && Sum$(abs(hltCaloJetsL1Fast.eta)<5.0 && hltCaloJetsL1Fast.pt>-99)>1 && hltPFGlobal.vbf_maxmjj>800 && hltPFGlobal.vbf_maxmjj_deta>3.5 && hltPFMETNoMu.pt>65)"
+    addsel = "(hltCaloMET.pt>65 && Sum$(abs(hltCaloJetsL1Fast.eta)<5.0 && hltCaloJetsL1Fast.pt>-99)>1 && Sum$(abs(hltPFJetsL1FastL2L3.eta)<5.0 && hltPFJetsL1FastL2L3.pt>40)>1 && hltPFGlobal.vbf_maxmjj>800 && hltPFGlobal.vbf_maxmjj_deta>3.5 && hltPFMETNoMu.pt>65)"
     plotting.append((variable, binning, addsel))
+
+    variable = ("hltCaloJetsL1Fast_pt2", "MaxIf$(hltCaloJetsL1Fast.pt, hltCaloJetsL1Fast.pt!=Max$(hltCaloJetsL1Fast.pt))")
+    binning = ("#scale[0.7]{HLT} Subleading CaloJet p_{T} [GeV]", 30, 0, 150)
+    addsel = addsel
+    plotting.append((variable, binning, addsel))
+
+    variable = ("hltCaloJetsL1Fast_eta1", "Sum$(hltCaloJetsL1Fast.eta * (hltCaloJetsL1Fast.pt==Max$(hltCaloJetsL1Fast.pt)))")
+    binning = ("#scale[0.7]{HLT} Leading CaloJet #eta", 20, -5, 5)
+    addsel = addsel
+    plotting.append((variable, binning, addsel))
+
+    # VBF jets
+    variable = ("hltPFJetsL1FastL2L3_maxmjj", "hltPFGlobal.vbf_maxmjj")
+    binning = ("#scale[0.7]{HLT} VBF max m_{jj} [GeV]", 40, 600, 1000)
+    addsel = "(hltCaloMET.pt>65 && Sum$(abs(hltCaloJetsL1Fast.eta)<5.0 && hltCaloJetsL1Fast.pt>30)>1 && Sum$(abs(hltPFJetsL1FastL2L3.eta)<5.0 && hltPFJetsL1FastL2L3.pt>40)>1 && hltPFGlobal.vbf_maxmjj>-99 && hltPFGlobal.vbf_maxmjj_deta>3.5 && hltPFMETNoMu.pt>65)"
+    plotting.append((variable, binning, addsel))
+
+    variable = ("hltPFJetsL1FastL2L3_leadmjj", "hltPFGlobal.vbf_leadmjj")
+    binning = ("#scale[0.7]{HLT} VBF max m_{jj,leading} [GeV]", 40, 600, 1000)
+    addsel = addsel
+    plotting.append((variable, binning, addsel))
+
+    variable = ("hltPFJetsL1FastL2L3_maxmjj_deta", "hltPFGlobal.vbf_maxmjj_deta")
+    binning = ("#scale[0.7]{HLT} Leading-m_{jj} VBF #Delta#eta", 18, 2.5, 7)
+    addsel = "(hltCaloMET.pt>65 && Sum$(abs(hltCaloJetsL1Fast.eta)<5.0 && hltCaloJetsL1Fast.pt>30)>1 && Sum$(abs(hltPFJetsL1FastL2L3.eta)<5.0 && hltPFJetsL1FastL2L3.pt>40)>1 && hltPFGlobal.vbf_maxmjj>800 && hltPFGlobal.vbf_maxmjj_deta>-99 && hltPFMETNoMu.pt>65)"
+    plotting.append((variable, binning, addsel))
+
+    variable = ("hltPFJetsL1FastL2L3_leadmjj_deta", "hltPFGlobal.vbf_leadmjj_deta")
+    binning = ("#scale[0.7]{HLT} Leading-m_{jj,leading} VBF #Delta#eta", 18, 2.5, 7)
+    addsel = addsel
+    plotting.append((variable, binning, addsel))
+
+    #___________________________________________________________________________
+    # hltTrackMET
+    variable = ("hltTrackMET", "hltTrackMET.pt")
+    binning = ("#scale[0.7]{HLT} TrackMET [GeV]", 30, 0, 150)
+    addsel = sel_trig1
+    plotting.append((variable, binning, addsel))
+
+    # hltTrackMETDPhi
+    variable = ("hltTrackMETDPhi", "abs(deltaPhi(hltPFMET.phi,hltTrackMET.phi))")
+    binning = ("#scale[0.7]{HLT} #Delta#phi(PFMET,TrackMET)", 32, 0, 3.2)
+    addsel = sel_trig1
+    plotting.append((variable, binning, addsel))
+
 
     for p in plotting:
         (variable, binning, addsel) = p
@@ -1664,66 +2312,58 @@ if sections["puremet_eff"]:
     sel_trig2 = "(hltCaloMET.pt>%i && hltCaloMETClean.pt>%i && hltPFMET.pt>%i)"
     sel_trig3 = "(hltCaloMET.pt>%i && hltCaloMETClean.pt>%i && hltCaloMETCleanUsingJetID.pt>%i && hltPFMET.pt>%i)"
     sel_trig4 = "(hltCaloMET.pt>%i && hltCaloMETClean.pt>%i && hltCaloMETCleanUsingJetID.pt>%i && hltPFMET.pt>%i && hltTrackMET.pt>%i)"
+    sel_trig5 = "(hltCaloMET.pt>%i && hltCaloMETClean.pt>%i && hltCaloMETCleanUsingJetID.pt>%i && hltPFMET.pt>%i && hltTrackMET.sumEt/hltPFMET.pt>%.2f)"
 
-    colors = [
-        TColor.GetColor("#9CE0EB"),  #? use TColor.GetColor("#CCF5FF"),
-        TColor.GetColor("#66D6E5"),
-        TColor.GetColor("#20ABBF"),
-        TColor.GetColor("#0D8799"),
-        TColor.GetColor("#055A66"),
-        TColor.GetColor("#002E33"),
-        ]
-    kComplete = TColor.GetColor("#D67F20")
     addsel = "(1)"
 
     # recoPFMETT0T1
     variable = ("recoPFMETT0T1", "recoPFMETT0T1.pt")
     binning = ("#scale[0.7]{RECO} Type-0+1 PFMET [GeV]", 80, 440)
     thresholds = [0, 80, 90, 100, 110, 120]
-    calomet, calomet1, calomet2, pfmet, trackmet = 0, 0, 0, 200, 0
     kHist = thresholds.index(90)
+    calomet, calomet1, calomet2, pfmet, trackmet = 0, 0, 0, 200, 0
     plotting.append((variable, binning, thresholds, calomet, calomet1, calomet2, pfmet, trackmet, kHist))
 
     variable = ("recoPFMETT0T1", "recoPFMETT0T1.pt")
     binning = ("#scale[0.7]{RECO} Type-0+1 PFMET [GeV]", 80, 400)
     thresholds = [0, 65, 70, 80, 90, 100]
-    calomet, calomet1, calomet2, pfmet, trackmet = 0, 0, 0, 150, 0
     kHist = thresholds.index(90)
+    calomet, calomet1, calomet2, pfmet, trackmet = 0, 0, 0, 150, 0
     plotting.append((variable, binning, thresholds, calomet, calomet1, calomet2, pfmet, trackmet, kHist))
 
     binning = ("#scale[0.7]{RECO} Type-0+1 PFMET [GeV]", 70, 400)
     thresholds = [0, 55, 65, 70, 80, 90]
-    calomet, calomet1, calomet2, pfmet, trackmet = 0, 0, 0, 120, 0
     kHist = thresholds.index(80)
+    calomet, calomet1, calomet2, pfmet, trackmet = 0, 0, 0, 120, 0
     plotting.append((variable, binning, thresholds, calomet, calomet1, calomet2, pfmet, trackmet, kHist))
 
     binning = ("#scale[0.7]{RECO} Type-0+1 PFMET [GeV]", 50, 360)
     thresholds = [0, 50, 55, 65, 70, 80]
-    calomet, calomet1, calomet2, pfmet, trackmet = 0, 0, 0, 100, 0
     kHist = thresholds.index(70)
+    calomet, calomet1, calomet2, pfmet, trackmet = 0, 0, 0, 100, 0
     plotting.append((variable, binning, thresholds, calomet, calomet1, calomet2, pfmet, trackmet, kHist))
 
     binning = ("#scale[0.7]{RECO} Type-0+1 PFMET [GeV]", 40, 320)
     thresholds = [0, 50, 55, 60, 65, 70]
-    calomet, calomet1, calomet2, pfmet, trackmet = 0, 0, 0, 80, 0
     kHist = thresholds.index(60)
+    calomet, calomet1, calomet2, pfmet, trackmet = 0, 0, 0, 80, 0
     plotting.append((variable, binning, thresholds, calomet, calomet1, calomet2, pfmet, trackmet, kHist))
 
     binning = ("#scale[0.7]{RECO} Type-0+1 PFMET [GeV]", 30, 240)
     thresholds = [0, 45, 50, 55, 60, 65]
-    calomet, calomet1, calomet2, pfmet, trackmet = 0, 0, 0, 65, 0
     kHist = thresholds.index(45)
+    calomet, calomet1, calomet2, pfmet, trackmet = 0, 0, 0, 65, 0
     plotting.append((variable, binning, thresholds, calomet, calomet1, calomet2, pfmet, trackmet, kHist))
 
     #for p in plotting:
     #    (variable, binning, thresholds, calomet, calomet1, calomet2, pfmet, trackmet, kHist) = p
     #
     #    params = [
-    #        (variable[0]+"_filt"        , kComplete, kComplete, variable[1], "*".join([sel, addsel, sel_noNoise])),
+    #        (variable[0]+"_filt"        , toneC, toneC, variable[1], "*".join([sel, addsel, sel_noNoise])),
     #        ]
     #    for i, x in enumerate(thresholds):
     #        params += [
-    #            (variable[0]+("_trig%i" % i), colors[i], colors[i], variable[1], "*".join([sel, addsel, sel_trig4 % (x, calomet1, calomet2, pfmet, trackmet), sel_noNoise])),
+    #            (variable[0]+("_trig%i" % i), tones[i], tones[i], variable[1], "*".join([sel, addsel, sel_trig4 % (x, calomet1, calomet2, pfmet, trackmet), sel_noNoise])),
     #            ]
     #    kTrig = "PFMET%i" % pfmet
     #    trigs = ["HLT PFMET<%i" % pfmet]+[("HLT PFMET>%i && CaloMET>%i" % (pfmet,x)) for x in thresholds]
@@ -1743,55 +2383,55 @@ if sections["puremet_eff"]:
     variable = ("recoPFMETT0T1", "recoPFMETT0T1.pt")
     binning = ("#scale[0.7]{RECO} Type-0+1 PFMET [GeV]", 80, 440)
     thresholds = [0, 60, 70, 80, 90, 100]
-    calomet, calomet1, calomet2, pfmet, trackmet = 100, 0, 0, 220, 0
     kHist = thresholds.index(70)
+    calomet, calomet1, calomet2, pfmet, trackmet = 100, 0, 0, 220, 0
     plotting.append((variable, binning, thresholds, calomet, calomet1, calomet2, pfmet, trackmet, kHist))
 
     variable = ("recoPFMETT0T1", "recoPFMETT0T1.pt")
     binning = ("#scale[0.7]{RECO} Type-0+1 PFMET [GeV]", 80, 400)
     thresholds = [0, 50, 60, 70, 80, 90]
-    calomet, calomet1, calomet2, pfmet, trackmet = 90, 0, 0, 150, 0
     kHist = thresholds.index(70)
+    calomet, calomet1, calomet2, pfmet, trackmet = 90, 0, 0, 150, 0
     plotting.append((variable, binning, thresholds, calomet, calomet1, calomet2, pfmet, trackmet, kHist))
 
     variable = ("recoPFMETT0T1", "recoPFMETT0T1.pt")
     binning = ("#scale[0.7]{RECO} Type-0+1 PFMET [GeV]", 70, 400)
     thresholds = [0, 40, 50, 60, 70, 80]
-    calomet, calomet1, calomet2, pfmet, trackmet = 80, 0, 0, 120, 0
     kHist = thresholds.index(50)
+    calomet, calomet1, calomet2, pfmet, trackmet = 80, 0, 0, 120, 0
     plotting.append((variable, binning, thresholds, calomet, calomet1, calomet2, pfmet, trackmet, kHist))
 
     variable = ("recoPFMETT0T1", "recoPFMETT0T1.pt")
     binning = ("#scale[0.7]{RECO} Type-0+1 PFMET [GeV]", 50, 360)
     thresholds = [0, 40, 45, 50, 60, 70]
-    calomet, calomet1, calomet2, pfmet, trackmet = 70, 0, 0, 100, 0
     kHist = thresholds.index(50)
+    calomet, calomet1, calomet2, pfmet, trackmet = 70, 0, 0, 100, 0
     plotting.append((variable, binning, thresholds, calomet, calomet1, calomet2, pfmet, trackmet, kHist))
 
     variable = ("recoPFMETT0T1", "recoPFMETT0T1.pt")
     binning = ("#scale[0.7]{RECO} Type-0+1 PFMET [GeV]", 40, 320)
     thresholds = [0, 30, 40, 45, 50, 60]
-    calomet, calomet1, calomet2, pfmet, trackmet = 60, 0, 0, 80, 0
     kHist = thresholds.index(50)
+    calomet, calomet1, calomet2, pfmet, trackmet = 60, 0, 0, 80, 0
     plotting.append((variable, binning, thresholds, calomet, calomet1, calomet2, pfmet, trackmet, kHist))
 
     variable = ("recoPFMETT0T1", "recoPFMETT0T1.pt")
     binning = ("#scale[0.7]{RECO} Type-0+1 PFMET [GeV]", 30, 240)
     thresholds = [0, 30, 35, 40, 45, 50]
-    calomet, calomet1, calomet2, pfmet, trackmet = 50, 0, 0, 65, 0
     kHist = thresholds.index(50)
+    calomet, calomet1, calomet2, pfmet, trackmet = 50, 0, 0, 65, 0
     plotting.append((variable, binning, thresholds, calomet, calomet1, calomet2, pfmet, trackmet, kHist))
 
     #for p in plotting:
     #    (variable, binning, thresholds, calomet, calomet1, calomet2, pfmet, trackmet, kHist) = p
     #
     #    params = [
-    #        (variable[0]+"_filt"        , kComplete, kComplete, variable[1], "*".join([sel, addsel, sel_noNoise])),
+    #        (variable[0]+"_filt"        , toneC, toneC, variable[1], "*".join([sel, addsel, sel_noNoise])),
     #        ]
     #    for i, x in enumerate(thresholds):
     #        params += [
-    #            (variable[0]+("_trig%i" % i), colors[i], colors[i], variable[1], "*".join([sel, addsel, sel_trig4 % (calomet, x, calomet2, pfmet, trackmet), sel_noNoise])),
-    #            #(variable[0]+("_trig%i" % i), colors[i], colors[i], variable[1], "*".join([sel, addsel, sel_trig4 % (calomet, calomet, x, pfmet, trackmet), sel_noNoise])),
+    #            (variable[0]+("_trig%i" % i), tones[i], tones[i], variable[1], "*".join([sel, addsel, sel_trig4 % (calomet, x, calomet2, pfmet, trackmet), sel_noNoise])),
+    #            #(variable[0]+("_trig%i" % i), tones[i], tones[i], variable[1], "*".join([sel, addsel, sel_trig4 % (calomet, calomet, x, pfmet, trackmet), sel_noNoise])),
     #            ]
     #    kTrig = "CaloMET%i" % calomet
     #    #kTrig = "CaloMET%i_2" % calomet
@@ -1811,57 +2451,124 @@ if sections["puremet_eff"]:
     variable = ("recoPFMETT0T1", "recoPFMETT0T1.pt")
     binning = ("#scale[0.7]{RECO} Type-0+1 PFMET [GeV]", 80, 440)
     thresholds = [0, 10, 15, 20, 30, 40]
-    calomet, calomet1, calomet2, pfmet, trackmet = 90, 0, 0, 200, 0
     kHist = thresholds.index(20)
+    calomet, calomet1, calomet2, pfmet, trackmet = 90, 0, 0, 200, 0
     plotting.append((variable, binning, thresholds, calomet, calomet1, calomet2, pfmet, trackmet, kHist))
 
     variable = ("recoPFMETT0T1", "recoPFMETT0T1.pt")
     binning = ("#scale[0.7]{RECO} Type-0+1 PFMET [GeV]", 80, 400)
     thresholds = [0, 10, 15, 20, 25, 30]
-    calomet, calomet1, calomet2, pfmet, trackmet = 90, 0, 0, 150, 0
     kHist = thresholds.index(15)
+    calomet, calomet1, calomet2, pfmet, trackmet = 90, 0, 0, 150, 0
     plotting.append((variable, binning, thresholds, calomet, calomet1, calomet2, pfmet, trackmet, kHist))
 
     variable = ("recoPFMETT0T1", "recoPFMETT0T1.pt")
     binning = ("#scale[0.7]{RECO} Type-0+1 PFMET [GeV]", 70, 400)
     thresholds = [0, 10, 12, 15, 20, 25]
-    calomet, calomet1, calomet2, pfmet, trackmet = 80, 0, 0, 120, 0
     kHist = thresholds.index(15)
+    calomet, calomet1, calomet2, pfmet, trackmet = 80, 0, 0, 120, 0
     plotting.append((variable, binning, thresholds, calomet, calomet1, calomet2, pfmet, trackmet, kHist))
 
     variable = ("recoPFMETT0T1", "recoPFMETT0T1.pt")
     binning = ("#scale[0.7]{RECO} Type-0+1 PFMET [GeV]", 50, 360)
     thresholds = [0, 5, 8, 10, 12, 15]
-    calomet, calomet1, calomet2, pfmet, trackmet = 70, 0, 0, 100, 0
     kHist = thresholds.index(10)
+    calomet, calomet1, calomet2, pfmet, trackmet = 70, 0, 0, 100, 0
     plotting.append((variable, binning, thresholds, calomet, calomet1, calomet2, pfmet, trackmet, kHist))
 
     variable = ("recoPFMETT0T1", "recoPFMETT0T1.pt")
     binning = ("#scale[0.7]{RECO} Type-0+1 PFMET [GeV]", 40, 320)
     thresholds = [0, 5, 8, 10, 12, 15]
-    calomet, calomet1, calomet2, pfmet, trackmet = 60, 0, 0, 80, 0
     kHist = thresholds.index(10)
+    calomet, calomet1, calomet2, pfmet, trackmet = 60, 0, 0, 80, 0
     plotting.append((variable, binning, thresholds, calomet, calomet1, calomet2, pfmet, trackmet, kHist))
 
     variable = ("recoPFMETT0T1", "recoPFMETT0T1.pt")
     binning = ("#scale[0.7]{RECO} Type-0+1 PFMET [GeV]", 30, 240)
     thresholds = [0, 5, 8, 10, 12, 15]
-    calomet, calomet1, calomet2, pfmet, trackmet = 50, 0, 0, 65, 0
     kHist = thresholds.index(10)
+    calomet, calomet1, calomet2, pfmet, trackmet = 50, 0, 0, 65, 0
     plotting.append((variable, binning, thresholds, calomet, calomet1, calomet2, pfmet, trackmet, kHist))
 
     #for p in plotting:
     #    (variable, binning, thresholds, calomet, calomet1, calomet2, pfmet, trackmet, kHist) = p
     #
     #    params = [
-    #        (variable[0]+"_filt"        , kComplete, kComplete, variable[1], "*".join([sel, addsel, sel_noNoise])),
+    #        (variable[0]+"_filt"        , toneC, toneC, variable[1], "*".join([sel, addsel, sel_noNoise])),
     #        ]
     #    for i, x in enumerate(thresholds):
     #        params += [
-    #            (variable[0]+("_trig%i" % i), colors[i], colors[i], variable[1], "*".join([sel, addsel, sel_trig4 % (calomet, calomet1, calomet2, pfmet, x), sel_noNoise])),
+    #            (variable[0]+("_trig%i" % i), tones[i], tones[i], variable[1], "*".join([sel, addsel, sel_trig4 % (calomet, calomet1, calomet2, pfmet, x), sel_noNoise])),
     #            ]
     #    kTrig = "PFMET%i_2" % pfmet
     #    trigs = ["HLT (PFMET<%i || CaloMET<%i)" % (pfmet, calomet)]+[("HLT PFMET>%i && CaloMET>%i && TrackMET>%i" % (pfmet,calomet,x)) for x in thresholds]
+    #
+    #    histos = book_ratio(params, binning)
+    #    project(params, histos, drawOverflow=False)
+    #    legs = draw_effnum(params, histos, kHist, trigs, legend=(0.23,0.625,0.96,0.94))
+    #    save(imgdir, "diagnosis_effnum_" + kTrig + "_" + variable[0])
+    #    legs = draw_eff(params, histos, kHist, trigs, legend=(0.24,0.695,0.96,0.94))
+    #    save(imgdir, "diagnosis_eff_" + kTrig + "_" + variable[0])
+
+
+    #___________________________________________________________________________
+    # sumptchf optimization
+    if plotting: del plotting[:]
+
+    variable = ("recoPFMETT0T1", "recoPFMETT0T1.pt")
+    binning = ("#scale[0.7]{RECO} Type-0+1 PFMET [GeV]", 80, 440)
+    thresholds = [0, 0.05, 0.1, 0.15, 0.2, 0.3]
+    kHist = thresholds.index(0.1)
+    calomet, calomet1, calomet2, pfmet, trackmet = 90, 0, 0, 200, -99
+    plotting.append((variable, binning, thresholds, calomet, calomet1, calomet2, pfmet, trackmet, kHist))
+
+    variable = ("recoPFMETT0T1", "recoPFMETT0T1.pt")
+    binning = ("#scale[0.7]{RECO} Type-0+1 PFMET [GeV]", 80, 400)
+    thresholds = [0, 0.05, 0.1, 0.15, 0.2, 0.3]
+    kHist = thresholds.index(0.1)
+    calomet, calomet1, calomet2, pfmet, trackmet = 90, 0, 0, 150, -99
+    plotting.append((variable, binning, thresholds, calomet, calomet1, calomet2, pfmet, trackmet, kHist))
+
+    variable = ("recoPFMETT0T1", "recoPFMETT0T1.pt")
+    binning = ("#scale[0.7]{RECO} Type-0+1 PFMET [GeV]", 70, 400)
+    thresholds = [0, 0.05, 0.1, 0.15, 0.2, 0.3]
+    kHist = thresholds.index(0.1)
+    calomet, calomet1, calomet2, pfmet, trackmet = 80, 0, 0, 120, 0
+    plotting.append((variable, binning, thresholds, calomet, calomet1, calomet2, pfmet, trackmet, kHist))
+
+    variable = ("recoPFMETT0T1", "recoPFMETT0T1.pt")
+    binning = ("#scale[0.7]{RECO} Type-0+1 PFMET [GeV]", 50, 360)
+    thresholds = [0, 0.05, 0.1, 0.15, 0.2, 0.3]
+    kHist = thresholds.index(0.1)
+    calomet, calomet1, calomet2, pfmet, trackmet = 70, 0, 0, 100, 0
+    plotting.append((variable, binning, thresholds, calomet, calomet1, calomet2, pfmet, trackmet, kHist))
+
+    variable = ("recoPFMETT0T1", "recoPFMETT0T1.pt")
+    binning = ("#scale[0.7]{RECO} Type-0+1 PFMET [GeV]", 40, 320)
+    thresholds = [0, 0.05, 0.1, 0.15, 0.2, 0.3]
+    kHist = thresholds.index(0.1)
+    calomet, calomet1, calomet2, pfmet, trackmet = 60, 0, 0, 80, 0
+    plotting.append((variable, binning, thresholds, calomet, calomet1, calomet2, pfmet, trackmet, kHist))
+
+    variable = ("recoPFMETT0T1", "recoPFMETT0T1.pt")
+    binning = ("#scale[0.7]{RECO} Type-0+1 PFMET [GeV]", 30, 240)
+    thresholds = [0, 0.05, 0.1, 0.15, 0.2, 0.3]
+    kHist = thresholds.index(0.1)
+    calomet, calomet1, calomet2, pfmet, trackmet = 50, 0, 0, 65, 0
+    plotting.append((variable, binning, thresholds, calomet, calomet1, calomet2, pfmet, trackmet, kHist))
+
+    #for p in plotting:
+    #    (variable, binning, thresholds, calomet, calomet1, calomet2, pfmet, trackmet, kHist) = p
+    #
+    #    params = [
+    #        (variable[0]+"_filt"        , toneC, toneC, variable[1], "*".join([sel, addsel, sel_noNoise])),
+    #        ]
+    #    for i, x in enumerate(thresholds):
+    #        params += [
+    #            (variable[0]+("_trig%i" % i), tones[i], tones[i], variable[1], "*".join([sel, addsel, sel_trig5 % (calomet, calomet1, calomet2, pfmet, x), sel_noNoise])),
+    #            ]
+    #    kTrig = "PFMET%i_3" % pfmet
+    #    trigs = ["HLT (PFMET<%i || CaloMET<%i)" % (pfmet, calomet)]+[("HLT PFMET>%i && CaloMET>%i && sumptchf>%.2f" % (pfmet,calomet,x)) for x in thresholds]
     #
     #    histos = book_ratio(params, binning)
     #    project(params, histos, drawOverflow=False)
@@ -1913,7 +2620,7 @@ if sections["puremet_eff"]:
     #    params = []
     #    for i, x in enumerate(thresholds):
     #        params += [
-    #            (variable[0]+("_trig%i" % i), colors[i], colors[i], variable[1], "*".join([sel, addsel, sel_trig4 % (calomet, calomet1, calomet2, x, trackmet), sel_noNoise])),
+    #            (variable[0]+("_trig%i" % i), tones[i], tones[i], variable[1], "*".join([sel, addsel, sel_trig4 % (calomet, calomet1, calomet2, x, trackmet), sel_noNoise])),
     #            ]
     #    kTrig = "PFMET%i" % pfmet
     #    trigs = [("HLT CaloMET>%i && PFMET>%i" % (calomet,x)) for x in thresholds]
@@ -1928,76 +2635,67 @@ if sections["monojet_eff"]:
     if plotting: del plotting[:]
 
     sel = "(triggerFlags[%i])" % ireftrig
-    #sel_noNoise = "(metfilterFlags[%i] && (Sum$(patJets.pt>0)>0 && patJets[0].jetID==1 && ((Sum$(patJets.pt>30)>1 && patJets[1].jetID==1) || Sum$(patJets.pt>30)==1)) )" % len(metfilters)
+    #sel_noNoise = "(metfilterFlags[%i] && (Sum$(patJets.pt>30)>0 && patJets[0].jetID==1 && ((Sum$(patJets.pt>30)>1 && patJets[1].jetID==1) || Sum$(patJets.pt>30)==1)) )" % len(metfilters)
     sel_noNoise = "(metfilterFlags[%i] && (Sum$(patJets.pt>0)>0 && abs(patJets[0].eta)<2.5 && patJets[0].jetID==1) )" % len(metfilters)
     sel_trig0 = ("(triggerFlags[%i])" %(triggers.index('HLT_MonoCentralPFJet80_PFMETnoMu105_NHEF0p95_v4')) )
     sel_trig1 = "(Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>%i)>0 && hltCaloMET.pt>65 && hltPFJetsL1FastL2L3[0].nhf<0.95 && Sum$(abs(hltPFJetsL1FastL2L3.eta)<2.6 && hltPFJetsL1FastL2L3.pt>%i)>0 && hltPFMETNoMu.pt>105)"
     sel_trig2 = "(Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>%i)>0 && Sum$(abs(hltPFJetsL1FastL2L3.eta)<2.6 && hltPFJetsL1FastL2L3.pt>%i)>0 && Sum$(abs(hltPFJetsL1FastL2L3NoPU.eta)<2.6 && hltPFJetsL1FastL2L3NoPU.pt>%i)>0)"
     sel_trig3 = "(hltPFJetsL1FastL2L3[0].nhf<%.2f && ((abs(hltPFJetsL1FastL2L3[0].eta)<2.4 && hltPFJetsL1FastL2L3[0].nch>%i) || abs(hltPFJetsL1FastL2L3[0].eta)>2.4))"  # use |eta|<2.4
 
-    colors = [
-        TColor.GetColor("#9CE0EB"),  #? use TColor.GetColor("#CCF5FF"),
-        TColor.GetColor("#66D6E5"),
-        TColor.GetColor("#20ABBF"),
-        TColor.GetColor("#0D8799"),
-        TColor.GetColor("#055A66"),
-        TColor.GetColor("#002E33"),
-        ]
-    kComplete = TColor.GetColor("#D67F20")
     addsel = "(hltCaloMET.pt>70 && hltCaloMETClean.pt>60 && hltPFMET.pt>100)"
 
     # ptj1
     variable = ("ptj1", "Alt$(patJets[0].pt, 0)")
     binning = ("#scale[0.7]{RECO} jet 1 p_{T} [GeV]", 30, 320)
     thresholds = [0, 90, 100, 105, 110, 120]
-    calojet, pfjet, pfnopujet = 0, 120, 0
     kHist = thresholds.index(100)
+    calojet, pfjet, pfnopujet = 0, 120, 0
     plotting.append((variable, binning, thresholds, calojet, pfjet, pfnopujet, kHist))
 
     variable = ("ptj1", "Alt$(patJets[0].pt, 0)")
     binning = ("#scale[0.7]{RECO} jet 1 p_{T} [GeV]", 20, 280)
     thresholds = [0, 70, 80, 85, 90, 100]
-    calojet, pfjet, pfnopujet = 0, 100, 0
     kHist = thresholds.index(80)
+    calojet, pfjet, pfnopujet = 0, 100, 0
     plotting.append((variable, binning, thresholds, calojet, pfjet, pfnopujet, kHist))
 
     variable = ("ptj1", "Alt$(patJets[0].pt, 0)")
     binning = ("#scale[0.7]{RECO} jet 1 p_{T} [GeV]", 20, 240)
     thresholds = [0, 50, 60, 65, 70, 80]
-    calojet, pfjet, pfnopujet = 0, 80, 0
     kHist = thresholds.index(60)
+    calojet, pfjet, pfnopujet = 0, 80, 0
     plotting.append((variable, binning, thresholds, calojet, pfjet, pfnopujet, kHist))
 
     variable = ("ptj1", "Alt$(patJets[0].pt, 0)")
     binning = ("#scale[0.7]{RECO} jet 1 p_{T} [GeV]", 20, 200)
     thresholds = [0, 40, 50, 55, 60, 70]
-    calojet, pfjet, pfnopujet = 0, 70, 0
     kHist = thresholds.index(50)
+    calojet, pfjet, pfnopujet = 0, 70, 0
     plotting.append((variable, binning, thresholds, calojet, pfjet, pfnopujet, kHist))
 
     variable = ("ptj1", "Alt$(patJets[0].pt, 0)")
     binning = ("#scale[0.7]{RECO} jet 1 p_{T} [GeV]", 20, 200)
     thresholds = [0, 30, 40, 45, 50, 60]
-    calojet, pfjet, pfnopujet = 0, 60, 0
     kHist = thresholds.index(40)
+    calojet, pfjet, pfnopujet = 0, 60, 0
     plotting.append((variable, binning, thresholds, calojet, pfjet, pfnopujet, kHist))
 
     variable = ("ptj1", "Alt$(patJets[0].pt, 0)")
     binning = ("#scale[0.7]{RECO} jet 1 p_{T} [GeV]", 20, 200)
     thresholds = [0, 20, 30, 35, 40, 50]
-    calojet, pfjet, pfnopujet = 0, 50, 0
     kHist = thresholds.index(30)
+    calojet, pfjet, pfnopujet = 0, 50, 0
     plotting.append((variable, binning, thresholds, calojet, pfjet, pfnopujet, kHist))
 
     #for p in plotting:
     #    (variable, binning, thresholds, calojet, pfjet, pfnopujet, kHist) = p
     #
     #    params = [
-    #        (variable[0]+"_filt"        , kComplete, kComplete, variable[1], "*".join([sel, addsel, sel_noNoise])),
+    #        (variable[0]+"_filt"        , toneC, toneC, variable[1], "*".join([sel, addsel, sel_noNoise])),
     #        ]
     #    for i, x in enumerate(thresholds):
     #        params += [
-    #            (variable[0]+("_trig%i" % i), colors[i], colors[i], variable[1], "*".join([sel, addsel, sel_trig2 % (x, pfjet, pfnopujet), sel_noNoise])),
+    #            (variable[0]+("_trig%i" % i), tones[i], tones[i], variable[1], "*".join([sel, addsel, sel_trig2 % (x, pfjet, pfnopujet), sel_noNoise])),
     #            ]
     #    kTrig = "PFJet%i" % pfjet
     #    trigs = ["HLT PFJet1 p_{T}<%i" % pfjet]+[("HLT PFJet1 p_{T}>%i && CaloJet1 p_{T}>%i" % (pfjet,x)) for x in thresholds]
@@ -2016,54 +2714,54 @@ if sections["monojet_eff"]:
     variable = ("ptj1", "Alt$(patJets[0].pt, 0)")
     binning = ("#scale[0.7]{RECO} jet 1 p_{T} [GeV]", 30, 320)
     thresholds = [0, 90, 100, 105, 110, 120]
-    calojet, pfjet, pfnopujet = 0, 0, 120
     kHist = thresholds.index(100)
+    calojet, pfjet, pfnopujet = 0, 0, 120
     plotting.append((variable, binning, thresholds, calojet, pfjet, pfnopujet, kHist))
 
     variable = ("ptj1", "Alt$(patJets[0].pt, 0)")
     binning = ("#scale[0.7]{RECO} jet 1 p_{T} [GeV]", 20, 280)
     thresholds = [0, 70, 80, 85, 90, 100]
-    calojet, pfjet, pfnopujet = 0, 0, 100
     kHist = thresholds.index(80)
+    calojet, pfjet, pfnopujet = 0, 0, 100
     plotting.append((variable, binning, thresholds, calojet, pfjet, pfnopujet, kHist))
 
     variable = ("ptj1", "Alt$(patJets[0].pt, 0)")
     binning = ("#scale[0.7]{RECO} jet 1 p_{T} [GeV]", 20, 240)
     thresholds = [0, 50, 60, 65, 70, 80]
-    calojet, pfjet, pfnopujet = 0, 0, 80
     kHist = thresholds.index(60)
+    calojet, pfjet, pfnopujet = 0, 0, 80
     plotting.append((variable, binning, thresholds, calojet, pfjet, pfnopujet, kHist))
 
     variable = ("ptj1", "Alt$(patJets[0].pt, 0)")
     binning = ("#scale[0.7]{RECO} jet 1 p_{T} [GeV]", 20, 200)
     thresholds = [0, 40, 50, 55, 60, 70]
-    calojet, pfjet, pfnopujet = 0, 0, 70
     kHist = thresholds.index(50)
+    calojet, pfjet, pfnopujet = 0, 0, 70
     plotting.append((variable, binning, thresholds, calojet, pfjet, pfnopujet, kHist))
 
     variable = ("ptj1", "Alt$(patJets[0].pt, 0)")
     binning = ("#scale[0.7]{RECO} jet 1 p_{T} [GeV]", 20, 200)
     thresholds = [0, 30, 40, 45, 50, 60]
-    calojet, pfjet, pfnopujet = 0, 0, 60
     kHist = thresholds.index(40)
+    calojet, pfjet, pfnopujet = 0, 0, 60
     plotting.append((variable, binning, thresholds, calojet, pfjet, pfnopujet, kHist))
 
     variable = ("ptj1", "Alt$(patJets[0].pt, 0)")
     binning = ("#scale[0.7]{RECO} jet 1 p_{T} [GeV]", 20, 200)
     thresholds = [0, 20, 30, 35, 40, 50]
-    calojet, pfjet, pfnopujet = 0, 0, 50
     kHist = thresholds.index(30)
+    calojet, pfjet, pfnopujet = 0, 0, 50
     plotting.append((variable, binning, thresholds, calojet, pfjet, pfnopujet, kHist))
 
     #for p in plotting:
     #    (variable, binning, thresholds, calojet, pfjet, pfnopujet, kHist) = p
     #
     #    params = [
-    #        (variable[0]+"_filt"        , kComplete, kComplete, variable[1], "*".join([sel, addsel, sel_noNoise])),
+    #        (variable[0]+"_filt"        , toneC, toneC, variable[1], "*".join([sel, addsel, sel_noNoise])),
     #        ]
     #    for i, x in enumerate(thresholds):
     #        params += [
-    #            (variable[0]+("_trig%i" % i), colors[i], colors[i], variable[1], "*".join([sel, addsel, sel_trig2 % (x, pfjet, pfnopujet), sel_noNoise])),
+    #            (variable[0]+("_trig%i" % i), tones[i], tones[i], variable[1], "*".join([sel, addsel, sel_trig2 % (x, pfjet, pfnopujet), sel_noNoise])),
     #            ]
     #    kTrig = "PFNoPUJet%i" % pfnopujet
     #    trigs = ["HLT PFNoPUJet1 p_{T}<%i" % pfnopujet]+[("HLT PFNoPUJet1 p_{T}>%i && CaloJet1 p_{T}>%i" % (pfnopujet,x)) for x in thresholds]
@@ -2085,14 +2783,14 @@ if sections["monojet_eff"]:
     variable = ("ptj1", "Alt$(patJets[0].pt, 0)")
     binning = ("#scale[0.7]{RECO} jet 1 p_{T} [GeV]", 30, 320)
     thresholds = [99, 0.95, 0.90]
-    nhf, nch = 99, -99
     kHist = thresholds.index(0.95)
+    nhf, nch = 99, -99
     params = [
-        (variable[0]+"_filt"        , kComplete, kComplete, variable[1], "*".join([sel, addsel, sel_noNoise])),
+        (variable[0]+"_filt"        , toneC, toneC, variable[1], "*".join([sel, addsel, sel_noNoise])),
         ]
     for i, x in enumerate(thresholds):
         params += [
-            (variable[0]+("_trig%i" % i), colors[1+i*2], colors[1+i*2], variable[1], "*".join([sel, addsel, sel_trig3 % (x, nch), sel_noNoise])),
+            (variable[0]+("_trig%i" % i), tones[1+i*2], tones[1+i*2], variable[1], "*".join([sel, addsel, sel_trig3 % (x, nch), sel_noNoise])),
             ]
     kTrig = "nhf"
     trigs = ["HLT PFJet1 nch<%i" % nch]+[("HLT PFJet1 nch>%i && nhf<%.2f" % (nch,x)) for x in thresholds]
@@ -2107,14 +2805,14 @@ if sections["monojet_eff"]:
     variable = ("ptj1", "Alt$(patJets[0].pt, 0)")
     binning = ("#scale[0.7]{RECO} jet 1 p_{T} [GeV]", 30, 320)
     thresholds = [-1, 0, 1]
-    nhf, nch = 0.95, -99
     kHist = thresholds.index(0)
+    nhf, nch = 0.95, -99
     params = [
-        (variable[0]+"_filt"        , kComplete, kComplete, variable[1], "*".join([sel, addsel, sel_noNoise])),
+        (variable[0]+"_filt"        , toneC, toneC, variable[1], "*".join([sel, addsel, sel_noNoise])),
         ]
     for i, x in enumerate(thresholds):
         params += [
-            (variable[0]+("_trig%i" % i), colors[1+i*2], colors[1+i*2], variable[1], "*".join([sel, addsel, sel_trig3 % (nhf, x), sel_noNoise])),
+            (variable[0]+("_trig%i" % i), tones[1+i*2], tones[1+i*2], variable[1], "*".join([sel, addsel, sel_trig3 % (nhf, x), sel_noNoise])),
             ]
     kTrig = "nch"
     trigs = ["HLT PFJet1 nhf>%.2f" % nhf]+[("HLT PFJet1 nhf>%.2f && nch>%i" % (nhf,x)) for x in thresholds]
@@ -2125,5 +2823,311 @@ if sections["monojet_eff"]:
     #save(imgdir, "diagnosis_effnum_" + kTrig + "_" + variable[0])
     #legs = draw_eff(params, histos, kHist, trigs, legend=(0.40,0.79,0.96,0.94), ymin=0.8, ymax=1.1)
     #save(imgdir, "diagnosis_eff_" + kTrig + "_" + variable[0])
+
+if sections["susdijet_eff"]:
+    if plotting: del plotting[:]
+
+    def label_var(histos, signal="PFMET80+CJ60x2", legend=(0.52,0.84,0.96,0.94)):
+        leg1 = TLegend(*legend)
+        leg1.SetFillStyle(0)
+        leg1.SetLineColor(0)
+        leg1.SetShadowColor(0)
+        leg1.SetBorderSize(0)
+        leg1.AddEntry(histos[0], "QCD", "f")
+        leg1.AddEntry(histos[3], signal, "f")
+        leg1.Draw()
+        return (leg1)  # persistent
+
+    sel = "(triggerFlags[%i])" % ireftrig
+    sel_noNoise = "(metfilterFlags[%i] && (Sum$(patJets.pt>30)>0 && patJets[0].jetID==1 && ((Sum$(patJets.pt>30)>1 && patJets[1].jetID==1) || Sum$(patJets.pt>30)==1)) )" % len(metfilters)
+    sel_noQCD0  = "patGlobal.dijet_mindphi_j30>0.5"
+    sel_noQCD1  = "patGlobal.dijet_mindphi_2cj>0.5"
+    sel_noQCD2  = "alphaT(patJets[0].pt, patJets[0].px, patJets[0].py, patJets[1].pt, patJets[1].px, patJets[1].py)>0.55"
+
+    sel_trig0 = ("(triggerFlags[%i])" %(triggers.index('HLT_DiCentralPFNoPUJet50_PFMETORPFMETNoMu80_v4')) )
+    sel_trig1 = "(hltCaloGlobal.dijet_mindphi_j30>%.2f && hltCaloGlobal.dijet_mindphi_j40>%.2f && hltCaloGlobal.dijet_mindphi_cj30>%.2f && hltCaloGlobal.dijet_mindphi_cj40>%.2f && hltCaloGlobal.dijet_mindphi_2cj>%.2f && hltCaloGlobal.dijet_mindphi_3cj>%.2f)"
+    sel_trig2 = "(hltPFGlobal.dijet_mindphi_j30>%.2f && hltPFGlobal.dijet_mindphi_j40>%.2f && hltPFGlobal.dijet_mindphi_cj30>%.2f && hltPFGlobal.dijet_mindphi_cj40>%.2f && hltPFGlobal.dijet_mindphi_2cj>%.2f && hltPFGlobal.dijet_mindphi_3cj>%.2f)"
+
+    addsel = "(hltCaloMET.pt>65 && hltCaloMETClean.pt>50 && hltPFMET.pt>80 && Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>40)>1 && Sum$(abs(hltPFJetsL1FastL2L3NoPU.eta)<2.6 && hltPFJetsL1FastL2L3NoPU.pt>60)>1)"
+    kColor = tones[2]
+
+    # offline mindphi
+    variable = ("patmindphi_j30", "patGlobal.dijet_mindphi_j30")
+    binning = ("#scale[0.7]{RECO} min #Delta#phi_{j30}(MET,jet)", 32, 0, 3.2)
+    plotting.append((variable, binning))
+
+    variable = ("patmindphi_2cj", "patGlobal.dijet_mindphi_2cj")
+    binning = ("#scale[0.7]{RECO} min #Delta#phi_{2cj}(MET,jet)", 32, 0, 3.2)
+    plotting.append((variable, binning))
+
+    # offline alphaT
+    variable = ("patalphat", "alphaT(patJets[0].pt, patJets[0].px, patJets[0].py, patJets[1].pt, patJets[1].px, patJets[1].py)")
+    binning = ("#scale[0.7]{RECO} #alpha_{T}", 32, 0, 3.2)
+    plotting.append((variable, binning))
+
+    # all mindphi
+    variable = ("hltCaloJetsL1Fast_mindphi_j30", "hltCaloGlobal.dijet_mindphi_j30")
+    binning = ("#scale[0.7]{HLT} Calo min #Delta#phi_{j30}(MET,jet)", 32, 0, 3.2)
+    plotting.append((variable, binning))
+
+    variable = ("hltCaloJetsL1Fast_mindphi_j40", "hltCaloGlobal.dijet_mindphi_j40")
+    binning = ("#scale[0.7]{HLT} Calo min #Delta#phi_{j40}(MET,jet)", 32, 0, 3.2)
+    plotting.append((variable, binning))
+
+    variable = ("hltCaloJetsL1Fast_mindphi_cj30", "hltCaloGlobal.dijet_mindphi_cj30")
+    binning = ("#scale[0.7]{HLT} Calo min #Delta#phi_{cj30}(MET,jet)", 32, 0, 3.2)
+    plotting.append((variable, binning))
+
+    variable = ("hltCaloJetsL1Fast_mindphi_cj40", "hltCaloGlobal.dijet_mindphi_cj40")
+    binning = ("#scale[0.7]{HLT} Calo min #Delta#phi_{cj40}(MET,jet)", 32, 0, 3.2)
+    plotting.append((variable, binning))
+
+    variable = ("hltCaloJetsL1Fast_mindphi_2cj", "hltCaloGlobal.dijet_mindphi_2cj")
+    binning = ("#scale[0.7]{HLT} Calo min #Delta#phi_{2cj}(MET,jet)", 32, 0, 3.2)
+    plotting.append((variable, binning))
+
+    variable = ("hltCaloJetsL1Fast_mindphi_3cj", "hltCaloGlobal.dijet_mindphi_3cj")
+    binning = ("#scale[0.7]{HLT} Calo min #Delta#phi_{3cj}(MET,jet)", 32, 0, 3.2)
+    plotting.append((variable, binning))
+
+    # (PF)
+    variable = ("hltPFJetsL1FastL2L3_mindphi_j30", "hltPFGlobal.dijet_mindphi_j30")
+    binning = ("#scale[0.7]{HLT} PF min #Delta#phi_{j30}(MET,jet)", 32, 0, 3.2)
+    plotting.append((variable, binning))
+
+    variable = ("hltPFJetsL1FastL2L3_mindphi_j40", "hltPFGlobal.dijet_mindphi_j40")
+    binning = ("#scale[0.7]{HLT} PF min #Delta#phi_{j40}(MET,jet)", 32, 0, 3.2)
+    plotting.append((variable, binning))
+
+    variable = ("hltPFJetsL1FastL2L3_mindphi_cj30", "hltPFGlobal.dijet_mindphi_cj30")
+    binning = ("#scale[0.7]{HLT} PF min #Delta#phi_{cj30}(MET,jet)", 32, 0, 3.2)
+    plotting.append((variable, binning))
+
+    variable = ("hltPFJetsL1FastL2L3_mindphi_cj40", "hltPFGlobal.dijet_mindphi_cj40")
+    binning = ("#scale[0.7]{HLT} PF min #Delta#phi_{cj40}(MET,jet)", 32, 0, 3.2)
+    plotting.append((variable, binning))
+
+    variable = ("hltPFJetsL1FastL2L3_mindphi_2cj", "hltPFGlobal.dijet_mindphi_2cj")
+    binning = ("#scale[0.7]{HLT} PF min #Delta#phi_{2cj}(MET,jet)", 32, 0, 3.2)
+    plotting.append((variable, binning))
+
+    variable = ("hltPFJetsL1FastL2L3_mindphi_3cj", "hltPFGlobal.dijet_mindphi_3cj")
+    binning = ("#scale[0.7]{HLT} PF min #Delta#phi_{3cj}(MET,jet)", 32, 0, 3.2)
+    plotting.append((variable, binning))
+
+
+    for p in plotting:
+        (variable, binning) = p
+
+        kVar = "mindphi_j30"
+        params = [
+            (variable[0]+"_nofilt"      , kBlack, kWhite , variable[1], "*".join([sel, addsel, sel_noNoise])),
+            (variable[0]+"_nofilt_trig1", kBlack, kWhite , variable[1], "*".join([sel, addsel, sel_noNoise])),
+            (variable[0]+"_filt"        , kBlack, kGray  , variable[1], "*".join([sel, addsel, sel_noNoise, sel_noQCD0])),
+            (variable[0]+"_filt_trig1"  , kBlack, kColor , variable[1], "*".join([sel, addsel, sel_noNoise, sel_noQCD0])),
+            ]
+        #histos = book(params, binning)
+        #project(params, histos)
+        #draw_rate(params, histos)
+        #legs = label_var(histos)
+        #save(imgdir, "diagnosis_effvar_" + kVar + "_" + variable[0])
+
+        kVar = "mindphi_2cj"
+        params = [
+            (variable[0]+"_nofilt"      , kBlack, kWhite , variable[1], "*".join([sel, addsel, sel_noNoise])),
+            (variable[0]+"_nofilt_trig1", kBlack, kWhite , variable[1], "*".join([sel, addsel, sel_noNoise])),
+            (variable[0]+"_filt"        , kBlack, kGray  , variable[1], "*".join([sel, addsel, sel_noNoise, sel_noQCD1])),
+            (variable[0]+"_filt_trig1"  , kBlack, kColor , variable[1], "*".join([sel, addsel, sel_noNoise, sel_noQCD1])),
+            ]
+        #histos = book(params, binning)
+        #project(params, histos)
+        #draw_rate(params, histos)
+        #legs = label_var(histos)
+        #save(imgdir, "diagnosis_effvar_" + kVar + "_" + variable[0])
+
+        kVar = "alphaT"
+        params = [
+            (variable[0]+"_nofilt"      , kBlack, kWhite , variable[1], "*".join([sel, addsel, sel_noNoise])),
+            (variable[0]+"_nofilt_trig1", kBlack, kWhite , variable[1], "*".join([sel, addsel, sel_noNoise])),
+            (variable[0]+"_filt"        , kBlack, kGray  , variable[1], "*".join([sel, addsel, sel_noNoise, sel_noQCD2])),
+            (variable[0]+"_filt_trig1"  , kBlack, kColor , variable[1], "*".join([sel, addsel, sel_noNoise, sel_noQCD2])),
+            ]
+        #histos = book(params, binning)
+        #project(params, histos)
+        #draw_rate(params, histos)
+        #legs = label_var(histos)
+        #save(imgdir, "diagnosis_effvar_" + kVar + "_" + variable[0])
+
+
+
+    #___________________________________________________________________________
+    # recoPFMETT0T1
+    if plotting: del plotting[:]
+
+    variable = ("recoPFMETT0T1", "recoPFMETT0T1.pt")
+    binning = ("#scale[0.7]{RECO} Type-0+1 PFMET [GeV]", 40, 320)
+    thresholds = [-99., 0.1, 0.2, 0.3, 0.4, 0.5]
+    kHist = thresholds.index(0.3)
+
+    kTrig = "hltCaloJetsL1Fast_mindphi_j30"
+    trig = "HLT Calo min #Delta#phi_{j30}>%.2f"
+    plotting.append((kTrig, trig))
+
+    kTrig = "hltCaloJetsL1Fast_mindphi_j40"
+    trig = "HLT Calo min #Delta#phi_{j40}>%.2f"
+    plotting.append((kTrig, trig))
+
+    kTrig = "hltCaloJetsL1Fast_mindphi_cj30"
+    trig = "HLT Calo min #Delta#phi_{cj30}>%.2f"
+    plotting.append((kTrig, trig))
+
+    kTrig = "hltCaloJetsL1Fast_mindphi_cj40"
+    trig = "HLT Calo min #Delta#phi_{cj40}>%.2f"
+    plotting.append((kTrig, trig))
+
+    kTrig = "hltCaloJetsL1Fast_mindphi_2cj"
+    trig = "HLT Calo min #Delta#phi_{2cj}>%.2f"
+    plotting.append((kTrig, trig))
+
+    kTrig = "hltCaloJetsL1Fast_mindphi_3cj"
+    trig = "HLT Calo min #Delta#phi_{3cj}>%.2f"
+    plotting.append((kTrig, trig))
+
+    kTrig = "hltPFJetsL1FastL2L3_mindphi_j30"
+    trig = "HLT PF min #Delta#phi_{j30}>%.2f"
+    plotting.append((kTrig, trig))
+
+    kTrig = "hltPFJetsL1FastL2L3_mindphi_j40"
+    trig = "HLT PF min #Delta#phi_{j40}>%.2f"
+    plotting.append((kTrig, trig))
+
+    kTrig = "hltPFJetsL1FastL2L3_mindphi_cj30"
+    trig = "HLT PF min #Delta#phi_{cj30}>%.2f"
+    plotting.append((kTrig, trig))
+
+    kTrig = "hltPFJetsL1FastL2L3_mindphi_cj40"
+    trig = "HLT PF min #Delta#phi_{cj40}>%.2f"
+    plotting.append((kTrig, trig))
+
+    kTrig = "hltPFJetsL1FastL2L3_mindphi_2cj"
+    trig = "HLT PF min #Delta#phi_{2cj}>%.2f"
+    plotting.append((kTrig, trig))
+
+    kTrig = "hltPFJetsL1FastL2L3_mindphi_3cj"
+    trig = "HLT PF min #Delta#phi_{3cj}>%.2f"
+    plotting.append((kTrig, trig))
+
+
+    for ip, p in enumerate(plotting):
+        (kTrig, trig) = p
+        #kTrig += "_2"
+
+        if   ip<6   :  sel_trig = sel_trig1
+        else        :  sel_trig = sel_trig2
+
+        params = [
+            (variable[0]+"_filt"        , toneC, toneC, variable[1], "*".join([sel, addsel, sel_noNoise, sel_noQCD0])),
+            #(variable[0]+"_filt"        , toneC, toneC, variable[1], "*".join([sel, addsel, sel_noNoise, sel_noQCD1])),
+            ]
+        for i, x in enumerate(thresholds):
+            dphi1, dphi2, dphi3, dphi4, dphi5, dphi6 = -99., -99., -99., -99., -99., -99.
+            if   ip%6==0:  dphi1 = x
+            elif ip%6==1:  dphi2 = x
+            elif ip%6==2:  dphi3 = x
+            elif ip%6==3:  dphi4 = x
+            elif ip%6==4:  dphi5 = x
+            elif ip%6==5:  dphi6 = x
+
+            params += [
+                (variable[0]+("_trig%i" % i), tones[i], tones[i], variable[1], "*".join([sel, addsel, sel_trig % (dphi1, dphi2, dphi3, dphi4, dphi5, dphi6), sel_noNoise, sel_noQCD0])),
+                #(variable[0]+("_trig%i" % i), tones[i], tones[i], variable[1], "*".join([sel, addsel, sel_trig % (dphi1, dphi2, dphi3, dphi4, dphi5, dphi6), sel_noNoise, sel_noQCD1])),
+                ]
+            trigs = [trig % -99.]+[trig % x for x in thresholds]
+
+        #histos = book_ratio(params, binning)
+        #project(params, histos, drawOverflow=False)
+        #legs = draw_effnum(params, histos, kHist, trigs)
+        #save(imgdir, "diagnosis_effnum_" + kTrig + "_" + variable[0])
+        #legs = draw_eff(params, histos, kHist, trigs)
+        #save(imgdir, "diagnosis_eff_" + kTrig + "_" + variable[0])
+
+
+    #___________________________________________________________________________
+    # recoPFMETT0T1
+    if plotting: del plotting[:]
+
+    variable = ("recoPFMETT0T1", "recoPFMETT0T1.pt")
+    binning = ("#scale[0.7]{RECO} Type-0+1 PFMET [GeV]", 40, 320)
+    thresholds = [-99., 0.1, 0.2, 0.3, 0.4, 0.5]
+    kHist = thresholds.index(0.3)
+    dphi1, dphi2, dphi3, dphi4, dphi5, dphi6 = -99., -99., -99., -99., -99., -99.
+
+    kTrig = "hltCaloJetsL1Fast_mindphi_2cj"
+    trig = "HLT Calo min #Delta#phi_{2cj}>%.2f"
+    addsel = "(hltCaloMET.pt>65 && hltCaloMETClean.pt>50 && hltPFMET.pt>80 && Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>40)>1 && Sum$(abs(hltPFJetsL1FastL2L3NoPU.eta)<2.6 && hltPFJetsL1FastL2L3NoPU.pt>60)>1)"
+    plotting.append((addsel, kTrig, trig))
+
+    kTrig = "hltPFJetsL1FastL2L3_mindphi_2cj"
+    trig = "HLT PF min #Delta#phi_{2cj}>%.2f"
+    addsel = addsel
+    plotting.append((addsel, kTrig, trig))
+
+    kTrig = "hltCaloJetsL1Fast_mindphi_2cj_CJ100CJ30"
+    trig = "HLT Calo min #Delta#phi_{2cj}>%.2f"
+    addsel = "(hltCaloMET.pt>65 && hltCaloMETClean.pt>50 && hltPFMET.pt>80 && Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>20)>1 && Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>80)>0 && Sum$(abs(hltPFJetsL1FastL2L3NoPU.eta)<2.6 && hltPFJetsL1FastL2L3NoPU.pt>30)>1 && Sum$(abs(hltPFJetsL1FastL2L3NoPU.eta)<2.6 && hltPFJetsL1FastL2L3NoPU.pt>100)>1)"
+    plotting.append((addsel, kTrig, trig))
+
+    kTrig = "hltPFJetsL1FastL2L3_mindphi_2cj_CJ100CJ30"
+    trig = "HLT PF min #Delta#phi_{2cj}>%.2f"
+    addsel = addsel
+    plotting.append((addsel, kTrig, trig))
+
+    kTrig = "hltCaloJetsL1Fast_mindphi_2cj_CJ60CJ30"
+    trig = "HLT Calo min #Delta#phi_{2cj}>%.2f"
+    addsel = "(hltCaloMET.pt>70 && hltCaloMETClean.pt>60 && hltPFMET.pt>100 && Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>20)>1 && Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>40)>0 && Sum$(abs(hltPFJetsL1FastL2L3NoPU.eta)<2.6 && hltPFJetsL1FastL2L3NoPU.pt>30)>1 && Sum$(abs(hltPFJetsL1FastL2L3NoPU.eta)<2.6 && hltPFJetsL1FastL2L3NoPU.pt>60)>1)"
+    plotting.append((addsel, kTrig, trig))
+
+    kTrig = "hltPFJetsL1FastL2L3_mindphi_2cj_CJ60CJ30"
+    trig = "HLT PF min #Delta#phi_{2cj}>%.2f"
+    addsel = addsel
+    plotting.append((addsel, kTrig, trig))
+
+
+    for ip, p in enumerate(plotting):
+        (addsel, kTrig, trig) = p
+        #kTrig += "_2"
+
+        if ip==0 or ip==2 or ip==4:  sel_trig = sel_trig1
+        else                      :  sel_trig = sel_trig2
+
+        params = [
+            (variable[0]+"_filt"        , toneC, toneC, variable[1], "*".join([sel, addsel, sel_noNoise, sel_noQCD0])),
+            #(variable[0]+"_filt"        , toneC, toneC, variable[1], "*".join([sel, addsel, sel_noNoise, sel_noQCD1])),
+            ]
+        for i, x in enumerate(thresholds):
+            dphi5 = x
+
+            params += [
+                (variable[0]+("_trig%i" % i), tones[i], tones[i], variable[1], "*".join([sel, addsel, sel_trig % (dphi1, dphi2, dphi3, dphi4, dphi5, dphi6), sel_noNoise, sel_noQCD0])),
+                #(variable[0]+("_trig%i" % i), tones[i], tones[i], variable[1], "*".join([sel, addsel, sel_trig % (dphi1, dphi2, dphi3, dphi4, dphi5, dphi6), sel_noNoise, sel_noQCD1])),
+                ]
+            trigs = [trig % -99.]+[trig % x for x in thresholds]
+
+        #histos = book_ratio(params, binning)
+        #project(params, histos, drawOverflow=False)
+        #legs = draw_effnum(params, histos, kHist, trigs)
+        #save(imgdir, "diagnosis_effnum_" + kTrig + "_" + variable[0])
+        #legs = draw_eff(params, histos, kHist, trigs)
+        #save(imgdir, "diagnosis_eff_" + kTrig + "_" + variable[0])
+
+
+    # PU dependence -- FIXME
+
+
+
+if sections["future_topology_hlt"]:
+    if plotting: del plotting[:]
+
+    pass
 
 

@@ -74,6 +74,8 @@ namespace simple {
         float dijet_mindphi_j40;
         float dijet_mindphi_cj30;
         float dijet_mindphi_cj40;
+        float dijet_mindphi_2cj;
+        float dijet_mindphi_3cj;
         float bjet_maxcsv;
         float bjet_maxcsv2;
         float vbf_maxmjj;

@@ -51,3 +51,8 @@ mGold2      = TColor.GetColor("#EBE8D8")
 mGreen2     = TColor.GetColor("#D8EBDD")
 
 nBlue       = TColor.GetColor("#6699cc")
+
+kQuark      = TColor.GetColor("#EA6699")
+kLepton     = TColor.GetColor("#608060")
+kBoson      = TColor.GetColor("#20ABBF")
+kFermion    = TColor.GetColor("#D67F20")

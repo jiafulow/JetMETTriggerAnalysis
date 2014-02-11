@@ -47,3 +47,12 @@ inline float deltaR(float eta1, float phi1, float eta2, float phi2)
   return TMath::Sqrt(deta*deta + dphi*dphi);
 }
 
+inline float alphaT(float pt1, float px1, float py1, float pt2, float px2, float py2)
+{
+  float sumpt = pt1 + pt2;
+  float sumpx = px1 + px2;
+  float sumpy = py1 + py2;
+  return (pt2 / TMath::Sqrt(sumpt*sumpt - (sumpx*sumpx+sumpy*sumpy) ));
+}
+
+
