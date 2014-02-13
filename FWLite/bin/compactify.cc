@@ -422,6 +422,7 @@ int main(int argc, char *argv[]) {
     const double patJetPtMin = analyzerpset.getParameter<double>("patJetPtMin");
     const double patJetEtaMax = analyzerpset.getParameter<double>("patJetEtaMax");
     const bool isData = analyzerpset.getParameter<bool>("isData");
+    const bool isGolden = analyzerpset.getParameter<bool>("isGolden");
     const bool verbose = analyzerpset.getParameter<bool>("verbose");
     HLTJetIDHelper hltJetIDHelper(hltJetIDParams);
     JetIDHelper jetIDHelper(jetIDParams);
@@ -559,6 +560,7 @@ int main(int argc, char *argv[]) {
         // Event info
         if (verbose)  std::cout << "compactify: Begin filling event info..." << std::endl;
         bool goodjson = jsonContainsEvent(lumisToProcess, ev);
+        if (isGolden && !goodjson)  continue;
         //unsigned int nPV = handler.recoVertices->size();
         unsigned int nPV = 999;
         unsigned int nGoodPV = handler.recoGoodVertices->size();
@@ -923,13 +925,18 @@ int main(int argc, char *argv[]) {
         for (unsigned int i = 0; i < handler.patJets->size(); ++i) {
             const pat::Jet& jet = handler.patJets->at(i);
             bool jetID = jetIDHelper(jet);
-            if (jet.pt() > 30 && fabs(jet.eta()) < 5.0 && jetID) {  // RA1, RA2 definition
+            if (jet.pt() > 30 && fabs(jet.eta()) < 4.5 && jetID) {  // RA2, RA2b definition
                 patHTMHT_p4 -= jet.p4();
             }
-            if (jet.pt() > 50 && fabs(jet.eta()) < 2.5 && jetID) {  // RA1, RA2 definition
+            if (jet.pt() > 50 && fabs(jet.eta()) < 2.5 && jetID) {  // RA2, RA2b definition
                 patHTMHT_sumEt += jet.pt();
             }
         }
+        patHTMHT.px    = patHTMHT_p4.px();
+        patHTMHT.py    = patHTMHT_p4.py();
+        patHTMHT.pt    = patHTMHT_p4.pt();
+        patHTMHT.phi   = patHTMHT_p4.phi();
+        patHTMHT.sumEt = patHTMHT_sumEt;
 
         //______________________________________________________________________
         // patGlobal

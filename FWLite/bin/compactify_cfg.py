@@ -173,6 +173,7 @@ process.analyzer = cms.PSet(
     patJetPtMin = cms.double(15),
     patJetEtaMax = cms.double(5),
     isData = cms.bool(options.isData),
+    isGolden = cms.bool(True),
     verbose = cms.bool(options.verbose),
 )
 
@@ -261,7 +262,7 @@ import csv
 lumiA = []
 lumiB = []
 lumiC = []
-with open('/uscms_data/d2/jiafu/Trigger/CMSSW_5_3_11/src/RecoLuminosity/LumiDB/jftest/lumibyls_HLT_MET80_v5.csv') as csvfile:
+with open('lumibyls_HLT_MET80_v5.csv') as csvfile:
     reader = csv.reader(csvfile)
     for row in reader:
         if not row[7][0].isdigit():  continue
