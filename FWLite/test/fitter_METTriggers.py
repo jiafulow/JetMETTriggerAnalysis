@@ -95,7 +95,7 @@ optmetfilters = [
 fitterinit = FitterInit()
 chain = TChain("tree", "tree")
 infiles = [
-    "../bin/compactified.L1ETM40.1.root",
+    "../bin/compactified.L1ETM40.3.root",
     ]
 for f in infiles:
     chain.Add(f)

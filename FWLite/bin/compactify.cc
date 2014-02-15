@@ -721,12 +721,51 @@ int main(int argc, char *argv[]) {
         //______________________________________________________________________
         // hltCaloMETCleanUsingJetID
         if (verbose)  std::cout << "compactify: Begin filling hltCaloMETCleanUsingJetID..." << std::endl;
-        simple_fill(handler.hltCaloMETCleansUsingJetID->at(0), hltCaloMETCleanUsingJetID);
+        //simple_fill(handler.hltCaloMETCleansUsingJetID->at(0), hltCaloMETCleanUsingJetID);  // FIXME
+
+        FourVector hltCaloMETCleanUsingJetID_p4(hltCaloMET.px, hltCaloMET.py, 0, 0);
+        double hltCaloMETCleanUsingJetID_sumEt = 0.;
+        for (unsigned int i = 0; i < handler.hltCaloJets->size(); ++i) {
+            const reco::CaloJet& jet = handler.hltCaloJets->at(i);
+            if (jet.et() < 20 || fabs(jet.eta()) > 5.0)  continue;
+
+            edm::ProductID productid = handler.hltCaloJetIDs->ids().front().first;
+            const reco::JetID clsJetID = handler.hltCaloJetIDs->get(productid, i);
+            bool jetID = hltJetIDHelper(jet, clsJetID);
+            if (jetID)  continue;  // anti-jetID
+
+            double pt  = jet.et();
+            double phi = jet.phi();
+            double px  = jet.et() * cos(phi);
+            double py  = jet.et() * sin(phi);
+            hltCaloMETCleanUsingJetID_p4 += FourVector(px, py, 0, 0);
+            hltCaloMETCleanUsingJetID_sumEt -= pt;
+        }
+
+        hltCaloMETCleanUsingJetID.px     = hltCaloMETCleanUsingJetID_p4.px();
+        hltCaloMETCleanUsingJetID.py     = hltCaloMETCleanUsingJetID_p4.py();
+        hltCaloMETCleanUsingJetID.pt     = hltCaloMETCleanUsingJetID_p4.pt();
+        hltCaloMETCleanUsingJetID.phi    = hltCaloMETCleanUsingJetID_p4.phi();
+        hltCaloMETCleanUsingJetID.sumEt  = hltCaloMETCleanUsingJetID_sumEt;
+
 
         //______________________________________________________________________
         // hltPFMET
         if (verbose)  std::cout << "compactify: Begin filling hltPFMET..." << std::endl;
-        simple_fill(handler.hltPFMETs->at(0), hltPFMET);
+        //simple_fill(handler.hltPFMETs->at(0), hltPFMET);  // FIXME
+
+        FourVector hltPFMET_p4(0,0,0,0);
+        double hltPFMET_sumEt = 0.;
+        for (unsigned int i = 0; i < handler.hltPFCandidates->size(); ++i) {
+            const reco::PFCandidate& cand = handler.hltPFCandidates->at(i);
+            hltPFMET_p4 -= cand.p4();
+            hltPFMET_sumEt += cand.pt();
+        }
+        hltPFMET.px     = hltPFMET_p4.px();
+        hltPFMET.py     = hltPFMET_p4.py();
+        hltPFMET.pt     = hltPFMET_p4.pt();
+        hltPFMET.phi    = hltPFMET_p4.phi();
+        hltPFMET.sumEt  = hltPFMET_sumEt;
 
         //______________________________________________________________________
         // hltPFMETNoMu

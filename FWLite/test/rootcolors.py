@@ -24,7 +24,7 @@ kMagenta2   = TColor.GetColor("#C020C0")
 kYellow2    = TColor.GetColor("#C0C020")
 kOrange2    = TColor.GetColor("#FFA533")
 
-kYellow3    = TColor.GetColor("#BFBF00")
+kYellow3    = TColor.GetColor("#BFAF00")
 kOrange3    = TColor.GetColor("#FF9900")
 
 kPurple2    = TColor.GetColor("#800080")

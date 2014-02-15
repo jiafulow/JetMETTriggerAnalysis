@@ -173,7 +173,7 @@ process.analyzer = cms.PSet(
     patJetPtMin = cms.double(15),
     patJetEtaMax = cms.double(5),
     isData = cms.bool(options.isData),
-    isGolden = cms.bool(True),
+    isGolden = cms.bool(False),
     verbose = cms.bool(options.verbose),
 )
 
