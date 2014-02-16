@@ -103,8 +103,8 @@ for f in infiles:
 
 sections = {}
 sections["makedataset"]     = False
-sections["makefits"]        = True
-sections["makechanges"]     = False
+sections["makefits"]        = False
+sections["makenewfits"]     = True
 plotting = []
 writing = []
 
@@ -116,9 +116,6 @@ if not imgdir.endswith("/"):  imgdir += "/"
 if gSystem.AccessPathName(imgdir):
     gSystem.mkdir(imgdir)
 
-wait = True
-if not wait:  gROOT.SetBatch(1)
-
 
 #_______________________________________________________________________________
 # Classes/Functions
@@ -127,6 +124,15 @@ class Properties:
     def __init__(self, x, y):
         self.x = x
         self.y = y
+
+def CMS_label():
+    old = (latex.GetTextFont(), latex.GetTextSize())
+    latex.SetTextFont(42); latex.SetTextSize(0.026)
+    latex.DrawLatex(0.665, 0.968, "Run2012D HLT_L1ETM40_v2")
+    latex.SetTextFont(62); latex.SetTextSize(0.028)
+    latex.DrawLatex(0.445, 0.968, "CMS Preliminary")
+    latex.SetTextFont(old[0]); latex.SetTextSize(old[1])
+    return
 
 def MakeTree(chain, selection, categories, variables, outtreename="tree", outfilename="dataset.root"):
     outfile = TFile.Open(outfilename, "RECREATE")
@@ -186,10 +192,7 @@ def MakeTree(chain, selection, categories, variables, outtreename="tree", outfil
     outfile.Close()
 
 def RunFactory(ws, eff, fitparams, var="var0", cats=["cat0"], xlow=0, xup=400):
-    ws.factory("var0[%.2f,%.2f]" % (xlow,xup))
-    ws.factory("var1[%.2f,%.2f]" % (xlow,xup))
-    ws.factory("var2[%.2f,%.2f]" % (xlow,xup))
-    ws.factory("var3[%.2f,%.2f]" % (xlow,xup))
+    ws.factory("%s[%.2f,%.2f]" % (var,xlow,xup))
     for cat in cats:
         ws.factory("%s[reject=0,accept=1]" % cat)
 
@@ -197,8 +200,8 @@ def RunFactory(ws, eff, fitparams, var="var0", cats=["cat0"], xlow=0, xup=400):
         ws.factory("fit%i[%.2f,%.2f,%.2f]" % (i, f[0], f[1], f[2]))
 
     ws.factory("expr::x('(%s-fit0)/fit1', %s, fit0, fit1)" % (var,var))
-    ws.factory("expr::effLogistic('fit2 / (1+exp(-x))', x, fit2)")
-    ws.factory("expr::effTanh('fit2/2 * (1 + TMath::TanH(x/2))', x, fit2)")
+    ws.factory("expr::effLogistic('fit2 / (1+exp(-x*2))', x, fit2)")
+    ws.factory("expr::effTanh('fit2/2 * (1 + TMath::TanH(x))', x, fit2)")
     ws.factory("expr::effArctan('fit2/2 * (1 + (2/TMath::Pi())*TMath::ATan(x))', x, fit2)")
     #ws.factory("expr::effArctan('fit2/2 * (1 + (2/TMath::Pi())*TMath::ATan(exp(TMath::Pi()/2 * x)))', x, fit2)")
     ws.factory("expr::effAlgebra('fit2/2 * (1 + x/(TMath::Sqrt(1+TMath::Power(x,2))))', x, x, fit2)")
@@ -207,6 +210,54 @@ def RunFactory(ws, eff, fitparams, var="var0", cats=["cat0"], xlow=0, xup=400):
     for cat in cats:
         ws.factory("Efficiency::%s(%s, %s, 'accept')" % (cat.replace("cat","model"), eff, cat))
     #ws.Print()
+
+def draw(ws, res, eff, var, cat, xtitle, trig, nfitparams, xlow=0, xup=400, ymax=1.1, new=False):
+    # Set variable-width binning
+    tmpbins = [0,10,20,30,40,50,60,70,80,90,100,110,120,140,160,180,200,220,240,280,320,360,400,480,600,750,1000]
+    tmpbins2 = [xlow] + [x for x in tmpbins if (x > xlow and x < xup)] + [xup]
+    bins = RooBinning(len(tmpbins2)-1, numpy.array(tmpbins2, dtype=float))
+
+    kColor = 4  # kBlue
+    kColorErr = 432  # kCyan
+    if new:
+        kColor = 618  # kMagenta+2
+        kColorErr = 609  # kMagenta-7
+    frame1 = ws.var(var).frame(RooFit.Bins(40), RooFit.Title("Data (all, accepted)"))
+    ds.plotOn(frame1)
+    ds.plotOn(frame1, RooFit.Cut("%s==%s::accept" % (cat,cat)), RooFit.MarkerColor(kColor), RooFit.LineColor(kColor))
+
+    frame2 = ws.var(var).frame(RooFit.Title("; %s; HLT efficiency" % xtitle))
+    ds.plotOn(frame2, RooFit.Binning(bins), RooFit.Efficiency(ws.cat(cat)))
+    ws.function(eff).plotOn(frame2, RooFit.LineColor(kColor))
+    nchisq = frame2.chiSquare(nfitparams)
+    ndof = bins.numBins()-nfitparams
+    chisq = nchisq * ndof
+    ws.function(eff).plotOn(frame2, RooFit.VisualizeError(res), RooFit.FillColor(kColorErr), RooFit.MoveToBack())
+
+    gPad.SetLeftMargin(0.15); frame2.GetYaxis().SetTitleOffset(1.25); frame2.GetYaxis().SetRangeUser(0,ymax)
+    #frame1.Draw()
+    frame2.Draw()
+    CMS_label()
+
+    latex.SetTextSize(0.044)
+    latex.DrawLatex(0.60, 0.30, "#chi^{2}/ndof = %4.2f/%.0f" % (chisq,ndof))
+    text = ["** "+trig+" **"]
+    text.append("chi2/ndof      %6.2f  =  %4.2f/%.0f" % (nchisq, chisq, ndof))
+    print "chi2/ndof      %6.2f  =  %4.2f/%.0f" % (nchisq, chisq, ndof)
+
+    latex.SetTextSize(0.026)
+    latex.DrawLatex(0.60, 0.26, trig)
+    for i in xrange(3):
+        v = ws.var("fit%i" % i)
+        if v.getVal() > 1:
+            text.append("p_%i            %6.2f  +/- %3.2f" % (i, v.getVal(), v.getError()))
+            latex.DrawLatex(0.60, 0.26-(i+1)*0.03, "p_{%i}            %6.2f  +/- %3.2f" % (i, v.getVal(), v.getError()))
+        else:
+            text.append("p_%i             %6.3f +/- %4.3f" % (i, v.getVal(), v.getError()))
+            latex.DrawLatex(0.60, 0.26-(i+1)*0.03, "p_{%i}             %6.3f +/- %4.3f" % (i, v.getVal(), v.getError()))
+    line.DrawLine(xlow, 1, xup, 1)
+    text.append("")
+    return text
 
 def save(imgdir, imgname):
     gPad.RedrawAxis()
@@ -218,8 +269,12 @@ def save(imgdir, imgname):
 # Make dataset
 
 if sections["makedataset"]:
-
-    selection = "(triggerFlags[%i] && metfilterFlags[%i] && (Sum$(patJets.pt>30)>0 && patJets[0].jetID==1 && ((Sum$(patJets.pt>30)>1 && patJets[1].jetID==1) || Sum$(patJets.pt>30)==1)) )" % (ireftrig, len(metfilters))
+    sel = "(triggerFlags[%i])" % ireftrig
+    sel_noNoise  = "(metfilterFlags[%i] && event.json)" % len(metfilters)
+    sel_noNoise0 = "(metfilterFlags[%i] && event.json && (Sum$(patJets.pt>20)>0 && patJets[0].jetID==1 && ((Sum$(patJets.pt>20)>1 && patJets[1].jetID==1) || Sum$(patJets.pt>20)==1)) )" % len(metfilters)
+    sel_noNoise1 = "(metfilterFlags[%i] && event.json && Sum$(patJets.pt>20)>0 && abs(patJets[0].eta)<2.5 && patJets[0].jetID==1)" % len(metfilters)
+    sel_noNoise2 = "(metfilterFlags[%i] && event.json && Sum$(patJets.pt>20 && abs(patJets.eta)<2.5)>1 && patJets[0].jetID==1 && ((abs(patJets[1].eta)<2.5 && patJets[1].jetID==1)||abs(patJets[1].eta)>=2.5) )" % len(metfilters)
+    selection = sel + "*" + sel_noNoise0
     categories = [
         ("(triggerFlags[%i] || triggerFlags[%i])" %(triggers.index('HLT_PFMET150_v7'), triggers.index('HLT_PFMET180_v7')) ),
         ("(triggerFlags[%i])" %(triggers.index('HLT_MonoCentralPFJet80_PFMETnoMu105_NHEF0p95_v4')) ),
@@ -233,21 +288,20 @@ if sections["makedataset"]:
         ("(triggerFlags[%i])" %(triggers.index('HLT_DiPFJet40_PFMETnoMu65_MJJ800VBF_AllJets_v9')) ),
         ("(triggerFlags[%i])" %(triggers.index('HLT_DiPFJet40_PFMETnoMu65_MJJ600VBF_LeadingJets_v9')) ),
         #("(triggerFlags[%i] || triggerFlags[%i])" %(triggers.index('HLT_DiPFJet40_PFMETnoMu65_MJJ800VBF_AllJets_v9'), triggers.index('HLT_DiPFJet40_PFMETnoMu65_MJJ600VBF_LeadingJets_v9'))),
+        # dummy x2
+        ("(!triggerFlags[%i])" % ireftrig),
+        ("(!triggerFlags[%i])" % ireftrig),
 
-        # [8-14]
-        ("hltPFMET.pt>150 && hltCaloMET.pt>0"),
-        ("hltPFMET.pt>150 && hltCaloMET.pt>60"),
-        ("hltPFMET.pt>150 && hltCaloMET.pt>70"),
-        ("hltPFMET.pt>150 && hltCaloMET.pt>80"),
-        ("hltPFMET.pt>150 && hltCaloMET.pt>90"),
-        ("hltPFMET.pt>150 && hltCaloMET.pt>100"),
-        ("hltPFMET.pt>150 && hltCaloMET.pt>110"),
+        # proposal
+        "(hltCaloMET.pt>90 && hltCaloMETClean.pt>80 && hltCaloMETCleanUsingJetID.pt>80 && hltPFMET.pt>150)",
         ]
     variables = [
         "recoPFMETT0T1.pt",
+        "patMPT.pt",
         "hltPFMET.pt",
         "hltCaloMET.pt",
         "hltCaloMETClean.pt",
+        "hltTrackMET.pt",
         ]
     MakeTree(chain, selection, categories, variables, outfilename=rootfilename)
 
@@ -258,51 +312,11 @@ if sections["makefits"]:
     if plotting: del plotting[:]
     if writing: del writing[:]
 
-    def draw(ws, res, eff, var, cat, xtitle, trig, nfitparams, xlow=0, xup=400, ymax=1.1):
-        # Set variable-width binning
-        tmpbins = [0,10,20,30,40,50,60,70,80,90,100,110,120,140,160,180,200,220,240,280,320,600]
-        tmpbins2 = [xlow] + [x for x in tmpbins if (x > xlow and x < xup)] + [xup]
-        bins = RooBinning(len(tmpbins2)-1, numpy.array(tmpbins2, dtype=float))
-
-        kColor = 4  # kBlue
-        frame1 = ws.var(var).frame(RooFit.Bins(40), RooFit.Title("Data (all, accepted)"))
-        ds.plotOn(frame1)
-        ds.plotOn(frame1, RooFit.Cut("%s==%s::accept" % (cat,cat)), RooFit.MarkerColor(kColor), RooFit.LineColor(kColor))
-
-        frame2 = ws.var(var).frame(RooFit.Title("; %s; HLT efficiency" % xtitle))
-        ds.plotOn(frame2, RooFit.Binning(bins), RooFit.Efficiency(ws.cat(cat)))
-        ws.function(eff).plotOn(frame2, RooFit.LineColor(kColor))
-        chisq = frame2.chiSquare(nfitparams)
-        ws.function(eff).plotOn(frame2, RooFit.VisualizeError(res), RooFit.MoveToBack())
-
-        gPad.SetLeftMargin(0.15); frame2.GetYaxis().SetTitleOffset(1.25); frame2.GetYaxis().SetRangeUser(0,ymax)
-        #frame1.Draw()
-        frame2.Draw()
-
-        print "chi2/ndof = %.2f" % chisq
-        latex.SetTextSize(0.044)
-        latex.DrawLatex(0.68, 0.22, "#chi^{2}/dof = %.2f" % chisq)
-        latex.SetTextSize(0.026)
-        latex.DrawLatex(0.68, 0.18, trig)
-        line.DrawLine(xlow, 1, xup, 1)
-
-        text = ["** "+cat+" **"]
-        for i in xrange(nfitparams):
-            v = ws.var("fit%i" % i)
-            if v.getVal() > 1:
-                text.append("p_%i            %6.2f  +/- %3.2f" % (i, v.getVal(), v.getError()))
-            else:
-                text.append("p_%i             %6.3f +/- %4.3f" % (i, v.getVal(), v.getError()))
-        text.append("chi2/ndof      %6.2f" % chisq)
-        text.append("")
-        return text
-
-
+    eff = "effError"
     #eff = "effLogistic"
     #eff = "effTanh"
     #eff = "effArctan"
     #eff = "effAlgebra"
-    eff = "effError"
 
     xlow, xup = 80, 400
     cat = "cat0"
@@ -310,7 +324,7 @@ if sections["makefits"]:
     fitparams = [
         (170,  80, 250),  # mean
         ( 20,   1,  50),  # sigma
-        (0.9, 0.3, 1.0),  # plateau
+        (0.92, 0.3, 1.0),  # plateau
         ]
     plotting.append((cat, kTrig, fitparams, xlow, xup))
 
@@ -324,65 +338,65 @@ if sections["makefits"]:
         ]
     plotting.append((cat, kTrig, fitparams, xlow, xup))
 
-    #xlow, xup = 40, 320
-    #cat = "cat2"
-    #kTrig = "DiCentralJetSUS"
-    #fitparams = [
-    #    (120,  50, 250),  # mean
-    #    ( 20,   1,  50),  # sigma
-    #    (0.5, 0.2, 0.7),  # plateau
-    #    ]
-    #plotting.append((cat, kTrig, fitparams, xlow, xup))
-    #
-    #xlow, xup = 40, 320
-    #cat = "cat3"
-    #kTrig = "DiCentralJetHIG"
-    #fitparams = [
-    #    (120,  50, 250),  # mean
-    #    ( 20,   1,  50),  # sigma
-    #    (0.5, 0.2, 0.7),  # plateau
-    #    ]
-    #plotting.append((cat, kTrig, fitparams, xlow, xup))
-    #
-    #xlow, xup = 40, 320
-    #cat = "cat4"
-    #kTrig = "HT"
-    #fitparams = [
-    #    (140,  50, 250),  # mean
-    #    ( 20,   1,  50),  # sigma
-    #    (0.4, 0.2, 0.7),  # plateau
-    #    ]
-    #plotting.append((cat, kTrig, fitparams, xlow, xup))
-    #
-    #xlow, xup = 40, 320
-    #cat = "cat5"
-    #kTrig = "btag"
-    #fitparams = [
-    #    (110,  40, 250),  # mean
-    #    ( 20,   1,  50),  # sigma
-    #    (0.2,0.05,0.25),  # plateau
-    #    ]
-    #plotting.append((cat, kTrig, fitparams, xlow, xup))
-    #
-    #xlow, xup = 30, 240
-    #cat = "cat6"
-    #kTrig = "VBFAll"
-    #fitparams = [
-    #    ( 100,  40, 220),  # mean
-    #    (  20,   5,  60),  # sigma
-    #    (0.02,0.01,0.04),  # plateau
-    #    ]
-    #plotting.append((cat, kTrig, fitparams, xlow, xup))
-    #
-    #xlow, xup = 30, 240
-    #cat = "cat7"
-    #kTrig = "VBFLead"
-    #fitparams = [
-    #    ( 100,  40, 220),  # mean
-    #    (  20,   5,  60),  # sigma
-    #    (0.02,0.01,0.04),  # plateau
-    #    ]
-    #plotting.append((cat, kTrig, fitparams, xlow, xup))
+    xlow, xup = 40, 320
+    cat = "cat2"
+    kTrig = "DiCentralJetSUS"
+    fitparams = [
+        (120,  50, 250),  # mean
+        ( 20,   1,  50),  # sigma
+        (0.5, 0.2, 0.7),  # plateau
+        ]
+    plotting.append((cat, kTrig, fitparams, xlow, xup))
+
+    xlow, xup = 40, 320
+    cat = "cat3"
+    kTrig = "DiCentralJetHIG"
+    fitparams = [
+        (120,  50, 250),  # mean
+        ( 20,   1,  50),  # sigma
+        (0.5, 0.2, 0.7),  # plateau
+        ]
+    plotting.append((cat, kTrig, fitparams, xlow, xup))
+
+    xlow, xup = 40, 320
+    cat = "cat4"
+    kTrig = "HT"
+    fitparams = [
+        (140,  50, 250),  # mean
+        ( 20,   1,  50),  # sigma
+        (0.4, 0.2, 0.7),  # plateau
+        ]
+    plotting.append((cat, kTrig, fitparams, xlow, xup))
+
+    xlow, xup = 40, 320
+    cat = "cat5"
+    kTrig = "btag"
+    fitparams = [
+        (110,  40, 250),  # mean
+        ( 20,   1,  50),  # sigma
+        (0.2,0.05,0.25),  # plateau
+        ]
+    plotting.append((cat, kTrig, fitparams, xlow, xup))
+
+    xlow, xup = 30, 240
+    cat = "cat6"
+    kTrig = "VBFAll"
+    fitparams = [
+        ( 100,  40, 220),  # mean
+        (  20,   5,  60),  # sigma
+        (0.02,0.01,0.04),  # plateau
+        ]
+    plotting.append((cat, kTrig, fitparams, xlow, xup))
+
+    xlow, xup = 30, 240
+    cat = "cat7"
+    kTrig = "VBFLead"
+    fitparams = [
+        ( 100,  40, 220),  # mean
+        (  20,   5,  60),  # sigma
+        (0.02,0.01,0.04),  # plateau
+        ]
+    plotting.append((cat, kTrig, fitparams, xlow, xup))
 
 
     # Make fits and plots
@@ -392,18 +406,18 @@ if sections["makefits"]:
         nfitparams = len(fitparams)
 
         var = "var0"
-        xtitle = "#scale[0.7]{RECO} Type-0+1 PFMET [GeV]"
+        xtitle = "#scale[0.7]{RECO} T0T1 PFMET [GeV]"
         ws = RooWorkspace("workspace", "workspace")
         RunFactory(ws, eff, fitparams, var, [cat], xlow=xlow, xup=xup)
         #ws.var("fit0").setConstant(1); ws.var("fit2").setConstant(1); nfitparams -= 2
-        wsfilename = "workspace.root"
-        ws.writeToFile(wsfilename)
+        #wsfilename = "workspace.root"
+        #ws.writeToFile(wsfilename)
 
         dsfile = TFile.Open(rootfilename)
         ds = RooDataSet("data", "data", RooArgSet(ws.var(var), ws.cat(cat)), RooFit.Import(dsfile.tree)); ds.Print()
 
         model = cat.replace("cat","model")
-        res = ws.pdf(model).fitTo(ds, RooFit.ConditionalObservables(RooArgSet(ws.var(var))), RooFit.Minimizer("Minuit"), RooFit.Save()); res.Print()
+        res = ws.pdf(model).fitTo(ds, RooFit.ConditionalObservables(RooArgSet(ws.var(var))), RooFit.Minimizer("Minuit"), RooFit.Save());
 
         ymax = fitparams[2][2]+0.1
         if ymax < 0.2:  ymax = fitparams[2][2]+0.01
@@ -418,94 +432,137 @@ if sections["makefits"]:
 
 
 #_______________________________________________________________________________
-# Change fits
-if sections["makechanges"]:
+# Make new fits
+if sections["makenewfits"]:
     if plotting: del plotting[:]
     if writing: del writing[:]
 
-    def draw(ws, res, eff, var, cat, xtitle, trig, nfitparams, xlow=0, xup=400, ymax=1.1):
-        # Set variable-width binning
-        tmpbins = [0,10,20,30,40,50,60,70,80,90,100,110,120,140,160,180,200,220,240,280,320,360,400,480,600]
-        tmpbins2 = [xlow] + [x for x in tmpbins if (x > xlow and x < xup)] + [xup]
-        bins = RooBinning(len(tmpbins2)-1, numpy.array(tmpbins2, dtype=float))
-
-        kColor = 4  # kBlue
-        frame1 = ws.var(var).frame(RooFit.Bins(40), RooFit.Title("Data (all, accepted)"))
-        ds.plotOn(frame1)
-        ds.plotOn(frame1, RooFit.Cut("%s==%s::accept" % (cat,cat)), RooFit.MarkerColor(kColor), RooFit.LineColor(kColor))
-
-        frame2 = ws.var(var).frame(RooFit.Title("; %s; HLT efficiency" % xtitle))
-        ds.plotOn(frame2, RooFit.Binning(bins), RooFit.Efficiency(ws.cat(cat)))
-        ws.function(eff).plotOn(frame2, RooFit.LineColor(kColor))
-        chisq = frame2.chiSquare(nfitparams)
-        ws.function(eff).plotOn(frame2, RooFit.VisualizeError(res), RooFit.MoveToBack())
-
-        gPad.SetLeftMargin(0.15); frame2.GetYaxis().SetTitleOffset(1.25); frame2.GetYaxis().SetRangeUser(0,ymax)
-        #frame1.Draw()
-        frame2.Draw()
-
-        print "chi2/ndof = %.2f" % chisq
-        latex.SetTextSize(0.044)
-        latex.DrawLatex(0.68, 0.22, "#chi^{2}/dof = %.2f" % chisq)
-        latex.SetTextSize(0.026)
-        latex.DrawLatex(0.68, 0.18, trig)
-        line.DrawLine(xlow, 1, xup, 1)
-
-        text = ["** "+cat+" **"]
-        for i in xrange(nfitparams):
-            v = ws.var("fit%i" % i)
-            if v.getVal() > 1:
-                text.append("p_%i            %6.2f  +/- %3.2f" % (i, v.getVal(), v.getError()))
-            else:
-                text.append("p_%i             %6.3f +/- %4.3f" % (i, v.getVal(), v.getError()))
-        text.append("chi2/ndof      %6.2f" % chisq)
-        text.append("")
-        return text
-
-
-    eff = "effLogistic"
-    #eff = "effError"
+    eff = "effError"
+    #eff = "effLogistic"
+    #eff = "effTanh"
+    #eff = "effArctan"
+    #eff = "effAlgebra"
 
     xlow, xup = 80, 400
-    cats = [("cat%i" % i) for i in xrange(8,15)]  # CHECKME
+    cat = "cat0"
+    newcat = "cat10"
     kTrig = "PFMET150"
     fitparams = [
         (170,  80, 250),  # mean
         ( 20,   1,  50),  # sigma
-        (0.9, 0.3, 1.0),  # plateau
+        (0.92, 0.3, 1.0),  # plateau
         ]
+    plotting.append((cat, newcat, kTrig, fitparams, xlow, xup))
 
-    nfitparams = len(fitparams)
+    xlow, xup = 50, 360
+    cat = "cat1"
+    newcat = "cat11"
+    kTrig = "MonoCentralJet"
+    fitparams = [
+        (130,  50, 250),  # mean
+        ( 20,   1,  50),  # sigma
+        (0.9, 0.2, 1.0),  # plateau
+        ]
+    plotting.append((cat, newcat, kTrig, fitparams, xlow, xup))
 
-    var = "var0"
-    xtitle = "#scale[0.7]{RECO} Type-0+1 PFMET [GeV]"
-    ws = RooWorkspace("workspace", "workspace")
-    RunFactory(ws, eff, fitparams, var, cats, xlow=xlow, xup=xup)
+    xlow, xup = 40, 320
+    cat = "cat2"
+    newcat = "cat12"
+    kTrig = "DiCentralJetSUS"
+    fitparams = [
+        (120,  50, 250),  # mean
+        ( 20,   1,  50),  # sigma
+        (0.5, 0.2, 0.7),  # plateau
+        ]
+    plotting.append((cat, newcat, kTrig, fitparams, xlow, xup))
 
-    dsfile = TFile.Open(rootfilename)
-    argset = [ws.var(var)]
-    for cat in cats:
-        argset.append(ws.cat(cat))
-    ds = RooDataSet("data", "data", RooArgSet(*argset), RooFit.Import(dsfile.tree)); ds.Print()
+    xlow, xup = 40, 320
+    cat = "cat3"
+    newcat = "cat13"
+    kTrig = "DiCentralJetHIG"
+    fitparams = [
+        (120,  50, 250),  # mean
+        ( 20,   1,  50),  # sigma
+        (0.5, 0.2, 0.7),  # plateau
+        ]
+    plotting.append((cat, newcat, kTrig, fitparams, xlow, xup))
 
-    kColor = 4
-    frame2 = ws.var(var).frame(RooFit.Title("; %s; HLT efficiency" % xtitle))
-    for cat in cats:
-        model = cat.replace("cat","model")
-        res = ws.pdf(model).fitTo(ds, RooFit.ConditionalObservables(RooArgSet(ws.var(var))), RooFit.Minimizer("Minuit"), RooFit.Save()); res.Print()
-        ws.function(eff).plotOn(frame2, RooFit.LineColor(kColor))
+    xlow, xup = 40, 320
+    cat = "cat4"
+    newcat = "cat14"
+    kTrig = "HT"
+    fitparams = [
+        (140,  50, 250),  # mean
+        ( 20,   1,  50),  # sigma
+        (0.4, 0.2, 0.7),  # plateau
+        ]
+    plotting.append((cat, newcat, kTrig, fitparams, xlow, xup))
 
+    xlow, xup = 40, 320
+    cat = "cat5"
+    newcat = "cat15"
+    kTrig = "btag"
+    fitparams = [
+        (110,  40, 250),  # mean
+        ( 20,   1,  50),  # sigma
+        (0.2,0.05,0.25),  # plateau
+        ]
+    plotting.append((cat, newcat, kTrig, fitparams, xlow, xup))
+
+    xlow, xup = 30, 240
+    cat = "cat6"
+    newcat = "cat16"
+    kTrig = "VBFAll"
+    fitparams = [
+        ( 100,  40, 220),  # mean
+        (  20,   5,  60),  # sigma
+        (0.02,0.01,0.04),  # plateau
+        ]
+    plotting.append((cat, newcat, kTrig, fitparams, xlow, xup))
+
+    xlow, xup = 30, 240
+    cat = "cat7"
+    newcat = "cat17"
+    kTrig = "VBFLead"
+    fitparams = [
+        ( 100,  40, 220),  # mean
+        (  20,   5,  60),  # sigma
+        (0.02,0.01,0.04),  # plateau
+        ]
+    plotting.append((cat, newcat, kTrig, fitparams, xlow, xup))
+
+
+    # Make fits and plots
     c1 = TCanvas("c1", "c1")
-    gPad.SetLeftMargin(0.15); frame2.GetYaxis().SetTitleOffset(1.25); frame2.GetYaxis().SetRangeUser(0,1.1)
-    frame2.Draw()
+    for p in plotting[:1]:
+        (cat, newcat, kTrig, fitparams, xlow, xup) = p
+        nfitparams = len(fitparams)
 
+        var = "var0"
+        xtitle = "#scale[0.7]{RECO} T0T1 PFMET [GeV]"
+        ws = RooWorkspace("workspace", "workspace")
+        RunFactory(ws, eff, fitparams, var, [cat, newcat], xlow=xlow, xup=xup)
+        #ws.var("fit0").setConstant(1); ws.var("fit2").setConstant(1); nfitparams -= 2
+        #wsfilename = "workspace.root"
+        #ws.writeToFile(wsfilename)
 
-    #ymax = fitparams[2][2]+0.1
-    #if ymax < 0.2:  ymax = fitparams[2][2]+0.01
-    #text = draw(ws, res, eff, var, cat, xtitle, kTrig, nfitparams, xlow=xlow, xup=xup, ymax=ymax)
+        dsfile = TFile.Open(rootfilename)
+        ds = RooDataSet("data", "data", RooArgSet(ws.var(var), ws.cat(cat), ws.cat(newcat)), RooFit.Import(dsfile.tree)); ds.Print()
 
-    #for t in text:  writing.append(t)
-    #save(imgdir, "changeeff_" + kTrig + "_" + eff)
+        model = cat.replace("cat","model")
+        res = ws.pdf(model).fitTo(ds, RooFit.ConditionalObservables(RooArgSet(ws.var(var))), RooFit.Minimizer("Minuit"), RooFit.Save());
 
+        ymax = fitparams[2][2]+0.1
+        if ymax < 0.2:  ymax = fitparams[2][2]+0.01
+        text = draw(ws, res, eff, var, cat, xtitle, kTrig, nfitparams, xlow=xlow, xup=xup, ymax=ymax)
+        for t in text:  writing.append(t)
 
+        text = draw(ws, res, eff, var, newcat, xtitle, kTrig, nfitparams, xlow=xlow, xup=xup, ymax=ymax, new=True)
+        for t in text:  writing.append(t)
+
+        save(imgdir, "fitneweff_" + kTrig + "_" + eff)
+
+    # Printout
+    print "-" * 40
+    for t in writing:  print t
 

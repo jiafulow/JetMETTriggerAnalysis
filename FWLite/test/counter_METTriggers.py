@@ -86,7 +86,9 @@ sections["bjet_clean"]      = False
 sections["vbf"]             = False
 sections["vbf_clean"]       = False
 
-sections["puremet_venn"]    = True
+sections["puremet_venn"]    = False
+
+sections["future_triggers"] = True
 
 
 # ______________________________________________________________________________
@@ -121,7 +123,7 @@ def pprint(counts, overlap=False):
         print "%6.0f, %6.0f, %6.1f, %6.1f" % (count0, count1, delta, delta1)
     if overlap:
         assert(len(counts)==4)
-        print "  overlap:      A=%4.0f%%     B=%4.0f%%    A&&B=%4.0f%%" % (counts[1][3], counts[2][3], counts[3][3])
+        print "  overlap:      A=%4.0f%%       B=%4.0f%%  A&&B=%4.0f%%" % (counts[1][3], counts[2][3], counts[3][3])
         print "  overlap: only A=%4.0f%%  only B=%4.0f%%  A&&B=%4.0f%%" % (counts[1][3]-counts[3][3], counts[2][3]-counts[3][3], counts[3][3])
     print
 
@@ -152,4 +154,16 @@ if sections["puremet_venn"]:
         "(hltCaloMET.pt>80 && hltPFMET.pt>150 && (hltCaloMETClean.pt<50 && hltCaloMETCleanUsingJetID.pt<50))",
         ]
     counts = count(sel_trigs); pprint(counts, overlap=True)
+
+if sections["future_triggers"]:
+    sel_trig0 = "(hltCaloMET.pt>80 && hltPFMET.pt>150)"
+    sel_trig1 = "(hltCaloMET.pt>90 && hltCaloMETClean.pt>80 && hltCaloMETCleanUsingJetID.pt>80 && hltPFMET.pt>150)"
+    sel_trigs = [
+        sel_trig0 + "||" + sel_trig1,
+        sel_trig0,
+        sel_trig1,
+        sel_trig0 + "&&" + sel_trig1,
+        ]
+    counts = count(sel_trigs); pprint(counts, overlap=True)
+
 
