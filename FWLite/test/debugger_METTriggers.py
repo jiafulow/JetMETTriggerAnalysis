@@ -63,10 +63,11 @@ optmetfilters = [
 #gSystem.AddIncludePath("/uscms_data/d2/jiafu/Trigger/CMSSW_5_3_11/src/")
 gInterpreter.AddIncludePath("/uscms_data/d2/jiafu/Trigger/CMSSW_5_3_11/src/")
 gROOT.LoadMacro("../src/SimpleCandidateLinkDef.h")
+gROOT.LoadMacro("HelperFunctions.h")
 
 #tfile = TFile.Open("../bin/compactified.L1ETM40.0.root")
 #tfile.tree = tfile.Events
-tfile = TFile.Open("../bin/compactified.L1ETM40.1.root")
+tfile = TFile.Open("../bin/compactified.L1ETM40.3.root")
 
 
 # puremet
@@ -112,15 +113,15 @@ tfile = TFile.Open("../bin/compactified.L1ETM40.1.root")
 
 # VBF max
 # 5-614-41  #< (only rereco)-(common)-(only real data)
-sel_trig0 = ("(triggerFlags[%i])" %(triggers.index('HLT_DiPFJet40_PFMETnoMu65_MJJ800VBF_AllJets_v9')) )
-sel_trig1 = "(hltCaloMET.pt>65 && Sum$(abs(hltCaloJetsL1Fast.eta)<5.0 && hltCaloJetsL1Fast.pt>30)>1 && Sum$(abs(hltPFJetsL1FastL2L3.eta)<5.0 && hltPFJetsL1FastL2L3.pt>40)>1 && hltPFGlobal.vbf_maxmjj>800 && hltPFGlobal.vbf_maxmjj_deta>3.5 && hltPFMETNoMu.pt>65)"
+#sel_trig0 = ("(triggerFlags[%i])" %(triggers.index('HLT_DiPFJet40_PFMETnoMu65_MJJ800VBF_AllJets_v9')) )
+#sel_trig1 = "(hltCaloMET.pt>65 && Sum$(abs(hltCaloJetsL1Fast.eta)<5.0 && hltCaloJetsL1Fast.pt>30)>1 && Sum$(abs(hltPFJetsL1FastL2L3.eta)<5.0 && hltPFJetsL1FastL2L3.pt>40)>1 && hltPFGlobal.vbf_maxmjj>800 && hltPFGlobal.vbf_maxmjj_deta>3.5 && hltPFMETNoMu.pt>65)"
 
 
 h1 = TH1F("h1", "h1", 5, 0, 5)
 h2 = TH1F("h2", "h2", 5, 0, 5)
 
-tfile.tree.Project(h1.GetName(), sel_trig0, ("(triggerFlags[%i]) * " % ireftrig) + sel_trig1, "goff")
-tfile.tree.Project(h2.GetName(), sel_trig1, ("(triggerFlags[%i]) * " % ireftrig) + sel_trig0, "goff")
+#tfile.tree.Project(h1.GetName(), sel_trig0, ("(triggerFlags[%i]) * " % ireftrig) + sel_trig1, "goff")
+#tfile.tree.Project(h2.GetName(), sel_trig1, ("(triggerFlags[%i]) * " % ireftrig) + sel_trig0, "goff")
 
 #tfile.tree.Draw("hltPFGlobal.vbf_leadmjj", ("(triggerFlags[%i]) * " % ireftrig) + sel_trig0)
 #tfile.tree.Draw("hltPFGlobal.vbf_leadmjj", ("(triggerFlags[%i]) * " % ireftrig) + sel_trig1)
@@ -143,3 +144,31 @@ tfile.tree.Project(h2.GetName(), sel_trig1, ("(triggerFlags[%i]) * " % ireftrig)
 
 h1.Print("all")
 h2.Print("all")
+
+
+sel_noNoise  = "(metfilterFlags[%i] && event.json)" % 8
+sel_noNoise0 = "(metfilterFlags[%i] && event.json && (Sum$(patJets.pt>20)>0 && patJets[0].jetID==1 && ((Sum$(patJets.pt>20)>1 && patJets[1].jetID==1) || Sum$(patJets.pt>20)==1)) )" % 8
+#selections = [
+#    "(hltCaloMET.pt>80 && hltPFMET.pt>150)",
+#    "(hltCaloMET.pt>90 && hltCaloMETClean.pt>-99 && hltCaloMETCleanUsingJetID.pt>-99 && hltPFMET.pt>150)",
+#    "(hltCaloMET.pt>90 && hltCaloMETClean.pt>80 && hltCaloMETCleanUsingJetID.pt>-99 && hltPFMET.pt>150)",
+#    "(hltCaloMET.pt>90 && hltCaloMETClean.pt>80 && hltCaloMETCleanUsingJetID.pt>80 && hltPFMET.pt>150)",
+#    ]
+sel_bench = "((Sum$(patJets.pt>30 && abs(patJets.eta)<2.5)>1 && patJets[0].pt>110 && abs(patJets[0].eta)<2.5 && abs(patJets[1].eta)<2.5 && patJets[0].jetID==1 && patJets[1].jetID==1 && abs(deltaPhi(patJets[0].phi,patJets[1].phi))<2.5) || (Sum$(patJets.pt>30 && abs(patJets.eta)<2.5)==1 && patJets[0].pt>110 && abs(patJets[0].eta)<2.5 && patJets[0].jetID==1))"
+sel_bench = sel_noNoise + "*" + sel_bench
+selections = [
+    "(Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>65)>0 && hltCaloMET.pt>65 && hltPFJetsL1FastL2L3[0].nhf<0.95 && Sum$(abs(hltPFJetsL1FastL2L3.eta)<2.6 && hltPFJetsL1FastL2L3.pt>80)>0 && hltPFMETNoMu.pt>105)",
+    "(Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>65)>0 && hltCaloMET.pt>70 && hltCaloMETClean.pt>60 && Sum$(abs(hltPFJetsL1FastL2L3NoPU.eta)<2.6 && hltPFJetsL1FastL2L3NoPU.pt>80)>0 && (hltPFMETNoMu.pt>100||hltPFMET.pt>100) && hltPFJetsL1FastL2L3[0].nhf<0.95)",
+    "(Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>85)>0 && hltCaloMET.pt>70 && hltCaloMETClean.pt>60 && Sum$(abs(hltPFJetsL1FastL2L3NoPU.eta)<2.6 && hltPFJetsL1FastL2L3NoPU.pt>100)>0 && (hltPFMETNoMu.pt>100||hltPFMET.pt>100) && hltPFJetsL1FastL2L3[0].nhf<0.95)",
+    "(Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>85)>0 && hltCaloMET.pt>70 && hltCaloMETClean.pt>60 && Sum$(abs(hltPFJetsL1FastL2L3NoPU.eta)<2.6 && hltPFJetsL1FastL2L3NoPU.pt>100)>0 && (hltPFMETNoMu.pt>100||hltPFMET.pt>100) && hltPFJetsL1FastL2L3[0].nhf<0.95 && hltPFJetsL1FastL2L3[0].nch>0)",
+    ]
+selections = [
+    "(Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>65)>0 && hltCaloMET.pt>65 && hltPFJetsL1FastL2L3[0].nhf<0.95 && Sum$(abs(hltPFJetsL1FastL2L3.eta)<2.6 && hltPFJetsL1FastL2L3.pt>80)>0 && hltPFMETNoMu.pt>105)",
+    "(Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>65)>0 && hltCaloMET.pt>70 && hltCaloMETClean.pt>60 && Sum$(abs(hltPFJetsL1FastL2L3NoPU.eta)<2.6 && hltPFJetsL1FastL2L3NoPU.pt>80)>0 && (hltPFMETNoMu.pt>100||hltPFMET.pt>100) && hltPFJetsL1FastL2L3[0].nhf<0.95)",
+    "(Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>70)>0 && hltCaloMET.pt>80 && hltCaloMETClean.pt>70 && Sum$(abs(hltPFJetsL1FastL2L3NoPU.eta)<2.6 && hltPFJetsL1FastL2L3NoPU.pt>80)>0 && (hltPFMETNoMu.pt>120||hltPFMET.pt>120) && hltPFJetsL1FastL2L3[0].nhf<0.95)",
+    "(Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>70)>0 && hltCaloMET.pt>80 && hltCaloMETClean.pt>70 && Sum$(abs(hltPFJetsL1FastL2L3NoPU.eta)<2.6 && hltPFJetsL1FastL2L3NoPU.pt>80)>0 && (hltPFMETNoMu.pt>120||hltPFMET.pt>120) && hltPFJetsL1FastL2L3[0].nhf<0.95 && hltPFJetsL1FastL2L3[0].nch>0)",
+    ]
+
+
+#tfile.tree.Draw("recoPFMETT0T1.pt", sel_bench + "*" + selections[2] + "* !" + selections[3])
+tfile.tree.Scan("recoPFMETT0T1.pt:patJets[0].pt", sel_bench + "*" + selections[2] + "* !" + selections[3])

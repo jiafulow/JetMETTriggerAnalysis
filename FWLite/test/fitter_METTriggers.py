@@ -9,7 +9,7 @@ class FitterInit:
     def __init__(self):
         # ROOT
         gROOT.LoadMacro("tdrstyle.C")
-        #gROOT.LoadMacro("HelperFunctions.h")
+        gROOT.LoadMacro("HelperFunctions.h")
         gROOT.ProcessLine("setTDRStyle()")
 
         #gSystem.AddIncludePath("/uscms_data/d2/jiafu/Trigger/CMSSW_5_3_11/src/")
@@ -108,8 +108,6 @@ sections["makenewfits"]     = True
 plotting = []
 writing = []
 
-#rootfilename = "dataset.root"
-rootfilename = "dataset_PFMET150.root"
 
 imgdir = "figures_20140206/"
 if not imgdir.endswith("/"):  imgdir += "/"
@@ -138,6 +136,7 @@ def MakeTree(chain, selection, categories, variables, outtreename="tree", outfil
     outfile = TFile.Open(outfilename, "RECREATE")
     outtree = TTree(outtreename, outtreename)
 
+    print selection
     ttfsel = TTreeFormula("selection", selection, chain)  #preselection
     outcats = []
     ttfcats = []
@@ -274,7 +273,18 @@ if sections["makedataset"]:
     sel_noNoise0 = "(metfilterFlags[%i] && event.json && (Sum$(patJets.pt>20)>0 && patJets[0].jetID==1 && ((Sum$(patJets.pt>20)>1 && patJets[1].jetID==1) || Sum$(patJets.pt>20)==1)) )" % len(metfilters)
     sel_noNoise1 = "(metfilterFlags[%i] && event.json && Sum$(patJets.pt>20)>0 && abs(patJets[0].eta)<2.5 && patJets[0].jetID==1)" % len(metfilters)
     sel_noNoise2 = "(metfilterFlags[%i] && event.json && Sum$(patJets.pt>20 && abs(patJets.eta)<2.5)>1 && patJets[0].jetID==1 && ((abs(patJets[1].eta)<2.5 && patJets[1].jetID==1)||abs(patJets[1].eta)>=2.5) )" % len(metfilters)
-    selection = sel + "*" + sel_noNoise0
+
+    ## PFMET150
+    #selection = sel + "*" + sel_noNoise0
+    #kTrig = "PFMET150"
+
+    # MonoCentralJet
+    sel_bench = "((Sum$(patJets.pt>30 && abs(patJets.eta)<2.5)>1 && patJets[0].pt>110 && abs(patJets[0].eta)<2.5 && abs(patJets[1].eta)<2.5 && patJets[0].jetID==1 && patJets[1].jetID==1 && abs(deltaPhi(patJets[0].phi,patJets[1].phi))<2.5) || (Sum$(patJets.pt>30 && abs(patJets.eta)<2.5)==1 && patJets[0].pt>110 && abs(patJets[0].eta)<2.5 && patJets[0].jetID==1))"
+    selection = sel_noNoise + "*" + sel_bench
+    #kTrig = "MonoCentralJet"
+    kTrig = "PFMET100CJ100"
+
+
     categories = [
         ("(triggerFlags[%i] || triggerFlags[%i])" %(triggers.index('HLT_PFMET150_v7'), triggers.index('HLT_PFMET180_v7')) ),
         ("(triggerFlags[%i])" %(triggers.index('HLT_MonoCentralPFJet80_PFMETnoMu105_NHEF0p95_v4')) ),
@@ -293,7 +303,9 @@ if sections["makedataset"]:
         ("(!triggerFlags[%i])" % ireftrig),
 
         # proposal
-        "(hltCaloMET.pt>90 && hltCaloMETClean.pt>80 && hltCaloMETCleanUsingJetID.pt>80 && hltPFMET.pt>150)",
+        #"(hltCaloMET.pt>90 && hltCaloMETClean.pt>80 && hltCaloMETCleanUsingJetID.pt>80 && hltPFMET.pt>150)",
+        "(Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>85)>0 && hltCaloMET.pt>70 && hltCaloMETClean.pt>60 && Sum$(abs(hltPFJetsL1FastL2L3NoPU.eta)<2.6 && hltPFJetsL1FastL2L3NoPU.pt>100)>0 && (hltPFMETNoMu.pt>100||hltPFMET.pt>100) && hltPFJetsL1FastL2L3[0].nhf<0.95 && hltPFJetsL1FastL2L3[0].nch>0)",
+        "(Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>70)>0 && hltCaloMET.pt>80 && hltCaloMETClean.pt>70 && Sum$(abs(hltPFJetsL1FastL2L3NoPU.eta)<2.6 && hltPFJetsL1FastL2L3NoPU.pt>80)>0 && (hltPFMETNoMu.pt>120||hltPFMET.pt>120) && hltPFJetsL1FastL2L3[0].nhf<0.95 && hltPFJetsL1FastL2L3[0].nch>0)",
         ]
     variables = [
         "recoPFMETT0T1.pt",
@@ -303,6 +315,7 @@ if sections["makedataset"]:
         "hltCaloMETClean.pt",
         "hltTrackMET.pt",
         ]
+    rootfilename = "dataset_%s.root" % kTrig
     MakeTree(chain, selection, categories, variables, outfilename=rootfilename)
 
 
@@ -401,7 +414,7 @@ if sections["makefits"]:
 
     # Make fits and plots
     c1 = TCanvas("c1", "c1")
-    for p in plotting:
+    for p in plotting[1:2]:
         (cat, kTrig, fitparams, xlow, xup) = p
         nfitparams = len(fitparams)
 
@@ -413,6 +426,7 @@ if sections["makefits"]:
         #wsfilename = "workspace.root"
         #ws.writeToFile(wsfilename)
 
+        rootfilename = "dataset_%s.root" % kTrig
         dsfile = TFile.Open(rootfilename)
         ds = RooDataSet("data", "data", RooArgSet(ws.var(var), ws.cat(cat)), RooFit.Import(dsfile.tree)); ds.Print()
 
@@ -456,8 +470,10 @@ if sections["makenewfits"]:
 
     xlow, xup = 50, 360
     cat = "cat1"
+    #newcat = "cat10"
+    #kTrig = "PFMET100CJ100"
     newcat = "cat11"
-    kTrig = "MonoCentralJet"
+    kTrig = "PFMET120CJ80"
     fitparams = [
         (130,  50, 250),  # mean
         ( 20,   1,  50),  # sigma
@@ -467,7 +483,7 @@ if sections["makenewfits"]:
 
     xlow, xup = 40, 320
     cat = "cat2"
-    newcat = "cat12"
+    newcat = "cat10"
     kTrig = "DiCentralJetSUS"
     fitparams = [
         (120,  50, 250),  # mean
@@ -478,7 +494,7 @@ if sections["makenewfits"]:
 
     xlow, xup = 40, 320
     cat = "cat3"
-    newcat = "cat13"
+    newcat = "cat10"
     kTrig = "DiCentralJetHIG"
     fitparams = [
         (120,  50, 250),  # mean
@@ -489,7 +505,7 @@ if sections["makenewfits"]:
 
     xlow, xup = 40, 320
     cat = "cat4"
-    newcat = "cat14"
+    newcat = "cat10"
     kTrig = "HT"
     fitparams = [
         (140,  50, 250),  # mean
@@ -500,7 +516,7 @@ if sections["makenewfits"]:
 
     xlow, xup = 40, 320
     cat = "cat5"
-    newcat = "cat15"
+    newcat = "cat10"
     kTrig = "btag"
     fitparams = [
         (110,  40, 250),  # mean
@@ -511,7 +527,7 @@ if sections["makenewfits"]:
 
     xlow, xup = 30, 240
     cat = "cat6"
-    newcat = "cat16"
+    newcat = "cat10"
     kTrig = "VBFAll"
     fitparams = [
         ( 100,  40, 220),  # mean
@@ -522,7 +538,7 @@ if sections["makenewfits"]:
 
     xlow, xup = 30, 240
     cat = "cat7"
-    newcat = "cat17"
+    newcat = "cat10"
     kTrig = "VBFLead"
     fitparams = [
         ( 100,  40, 220),  # mean
@@ -534,7 +550,7 @@ if sections["makenewfits"]:
 
     # Make fits and plots
     c1 = TCanvas("c1", "c1")
-    for p in plotting[:1]:
+    for p in plotting[1:2]:
         (cat, newcat, kTrig, fitparams, xlow, xup) = p
         nfitparams = len(fitparams)
 
@@ -546,18 +562,20 @@ if sections["makenewfits"]:
         #wsfilename = "workspace.root"
         #ws.writeToFile(wsfilename)
 
+        rootfilename = "dataset_%s.root" % kTrig
         dsfile = TFile.Open(rootfilename)
         ds = RooDataSet("data", "data", RooArgSet(ws.var(var), ws.cat(cat), ws.cat(newcat)), RooFit.Import(dsfile.tree)); ds.Print()
 
         model = cat.replace("cat","model")
-        res = ws.pdf(model).fitTo(ds, RooFit.ConditionalObservables(RooArgSet(ws.var(var))), RooFit.Minimizer("Minuit"), RooFit.Save());
-
+        res1 = ws.pdf(model).fitTo(ds, RooFit.ConditionalObservables(RooArgSet(ws.var(var))), RooFit.Minimizer("Minuit"), RooFit.Save());
         ymax = fitparams[2][2]+0.1
         if ymax < 0.2:  ymax = fitparams[2][2]+0.01
-        text = draw(ws, res, eff, var, cat, xtitle, kTrig, nfitparams, xlow=xlow, xup=xup, ymax=ymax)
+        text = draw(ws, res1, eff, var, cat, xtitle, kTrig, nfitparams, xlow=xlow, xup=xup, ymax=ymax)
         for t in text:  writing.append(t)
 
-        text = draw(ws, res, eff, var, newcat, xtitle, kTrig, nfitparams, xlow=xlow, xup=xup, ymax=ymax, new=True)
+        model = newcat.replace("cat","model")
+        res2 = ws.pdf(model).fitTo(ds, RooFit.ConditionalObservables(RooArgSet(ws.var(var))), RooFit.Minimizer("Minuit"), RooFit.Save());
+        text = draw(ws, res2, eff, var, newcat, xtitle, kTrig, nfitparams, xlow=xlow, xup=xup, ymax=ymax, new=True)
         for t in text:  writing.append(t)
 
         save(imgdir, "fitneweff_" + kTrig + "_" + eff)
