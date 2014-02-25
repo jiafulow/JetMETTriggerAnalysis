@@ -95,16 +95,17 @@ optmetfilters = [
 fitterinit = FitterInit()
 chain = TChain("tree", "tree")
 infiles = [
-    "../bin/compactified.L1ETM40.3.root",
+    "../bin/compactified.L1ETM40.4.root",
     ]
 for f in infiles:
     chain.Add(f)
 
 
 sections = {}
-sections["makedataset"]     = False
-sections["makefits"]        = False
-sections["makenewfits"]     = True
+sections["makedataset"] = False
+sections["makefits"]    = False
+sections["makenewfits"] = True
+sections["makefits2"]   = False
 plotting = []
 writing = []
 
@@ -199,20 +200,31 @@ def RunFactory(ws, eff, fitparams, var="var0", cats=["cat0"], xlow=0, xup=400):
         ws.factory("fit%i[%.2f,%.2f,%.2f]" % (i, f[0], f[1], f[2]))
 
     ws.factory("expr::x('(%s-fit0)/fit1', %s, fit0, fit1)" % (var,var))
-    ws.factory("expr::effLogistic('fit2 / (1+exp(-x*2))', x, fit2)")
+    ws.factory("expr::effLogistic('fit2 / (1+TMath::Exp(-x*2))', x, fit2)")
     ws.factory("expr::effTanh('fit2/2 * (1 + TMath::TanH(x))', x, fit2)")
     ws.factory("expr::effArctan('fit2/2 * (1 + (2/TMath::Pi())*TMath::ATan(x))', x, fit2)")
     #ws.factory("expr::effArctan('fit2/2 * (1 + (2/TMath::Pi())*TMath::ATan(exp(TMath::Pi()/2 * x)))', x, fit2)")
     ws.factory("expr::effAlgebra('fit2/2 * (1 + x/(TMath::Sqrt(1+TMath::Power(x,2))))', x, x, fit2)")
     # NOTE: effError won't converge properly if eff=0 expected but eff>0 observed. Need to truncate data range
     ws.factory("expr::effError('fit2/2 * (1 + TMath::Erf(x/TMath::Sqrt2()))', x, fit2)")
+
+    ## Exponentially modified gaussian
+    #ws.factory("expr::tt('fit1*fit3', fit1, fit3)")
+    #ws.factory("expr::effEMG('fit2/2 * (TMath::Erfc(-x/TMath::Sqrt2()) - TMath::Erfc((-x + tt)/TMath::Sqrt2()) * TMath::Exp(tt*(-x + 0.5*tt)) )', x, tt, fit2)")
+
+    ## 4-param error function
+    #ws.factory("expr::effError4('fit2*(1-fit3)/2  * (1+fit3 + TMath::Erf(x/TMath::Sqrt2()))', x, fit2, fit3)")
+
+
     for cat in cats:
         ws.factory("Efficiency::%s(%s, %s, 'accept')" % (cat.replace("cat","model"), eff, cat))
     #ws.Print()
 
 def draw(ws, res, eff, var, cat, xtitle, trig, nfitparams, xlow=0, xup=400, ymax=1.1, oldres=[]):
     # Set variable-width binning
-    tmpbins = [0,10,20,30,40,50,60,70,80,90,100,110,120,140,160,180,200,220,240,280,320,360,400,480,600,750,1000]
+    tmpbins = [x * 0.05 for x in range(0, 20)]+[1,10,20,30,40,50,60,70,80,90,100,110,120,140,160,180,200,220,240,280,320,360,400,480,600,750,1000]
+    if kTrig == "PFMET100HT400" or kTrig == "PFMET80HT400" or kTrig == "PFMET80CJ30x2CSV07" or kTrig == "PFMET100CJ80CSV07":  # low stat
+        tmpbins = [0,10,20,30,40,50,60,70,80,90,100,110,120,140,160,200,240,320,400,480,600,750,1000]
     tmpbins2 = [xlow] + [x for x in tmpbins if (x > xlow and x < xup)] + [xup]
     bins = RooBinning(len(tmpbins2)-1, numpy.array(tmpbins2, dtype=float))
 
@@ -306,14 +318,52 @@ if sections["makedataset"]:
     #kTrig = "PFMET100CJ60CJ30"
     #proposal = "(hltCaloMET.pt>70 && hltCaloMETClean.pt>60 && Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>20)>1 && Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>50)>0 && Sum$(abs(hltPFJetsL1FastL2L3NoPU.eta)<2.6 && hltPFJetsL1FastL2L3NoPU.pt>30)>1 && Sum$(abs(hltPFJetsL1FastL2L3NoPU.eta)<2.6 && hltPFJetsL1FastL2L3NoPU.pt>60)>0 && (hltPFMET.pt>100||hltPFMETNoMu.pt>100) && hltPFGlobal.dijet_mindphi_2cj>0.5)"
 
-    # DiCentralJetSUS
-    sel_bench = "(Sum$(patJets.pt>30 && abs(patJets.eta)<2.5)>1 && patJets[0].pt>70 && abs(patJets[0].eta)<2.5 && patJets[1].pt>70 && abs(patJets[1].eta)<2.5 && patJets[0].jetID==1 && patJets[1].jetID==1 && patGlobal.dijet_mindphi_2cj>0.5 && ((Sum$(patJets.pt>30 && abs(patJets.eta)<2.5)>2 && abs(patJets[2].eta)<2.5 && patJets[2].jetID==1 && patGlobal.dijet_mindphi_3cj>0.3)||Sum$(patJets.pt>30 && abs(patJets.eta)<2.5)==2))"
+    ## DiCentralJetSUS
+    #sel_bench = "(Sum$(patJets.pt>30 && abs(patJets.eta)<2.5)>1 && patJets[0].pt>70 && abs(patJets[0].eta)<2.5 && patJets[1].pt>70 && abs(patJets[1].eta)<2.5 && patJets[0].jetID==1 && patJets[1].jetID==1 && patGlobal.dijet_mindphi_2cj>0.5 && ((Sum$(patJets.pt>30 && abs(patJets.eta)<2.5)>2 && abs(patJets[2].eta)<2.5 && patJets[2].jetID==1 && patGlobal.dijet_mindphi_3cj>0.3)||Sum$(patJets.pt>30 && abs(patJets.eta)<2.5)==2))"
+    #selection = sel_noNoise + "*" + sel_bench
+    ##kTrig = "DiCentralJetSUS"
+    #kTrig = "PFMET80CJ60x2"
+    #proposal = "(hltCaloMET.pt>65 && hltCaloMETClean.pt>55 && Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>50)>1 && Sum$(abs(hltPFJetsL1FastL2L3NoPU.eta)<2.6 && hltPFJetsL1FastL2L3NoPU.pt>60)>1 && (hltPFMET.pt>80||hltPFMETNoMu.pt>80) && hltPFGlobal.dijet_mindphi_2cj>0.3)"
+
+    ## HT
+    #sel_bench = "(Sum$(patJets.pt>50 && abs(patJets.eta)<2.5)>2 && patJets[0].pt>50 && abs(patJets[0].eta)<2.5 && patJets[1].pt>50 && abs(patJets[1].eta)<2.5 && patJets[2].pt>50 && abs(patJets[2].eta)<2.5 && patJets[0].jetID==1 && patJets[1].jetID==1 && patJets[2].jetID==1 && patHTMHT.sumEt>450)"
+    #selection = sel_noNoise + "*" + sel_bench
+    ##kTrig = "HT"
+    #kTrig = "PFMET100HT400"
+    #proposal = "(hltCaloHTMHT.sumEt>350 && hltCaloMET.pt>65 && hltCaloMETClean.pt>55 && hltPFHTMHTNoPU.sumEt>400 && hltPFMET.pt>100 && Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>30)>1 && Sum$(abs(hltPFJetsL1FastL2L3NoPU.eta)<2.6 && hltPFJetsL1FastL2L3NoPU.pt>40)>1)"
+    #kTrig = "PFMET80HT400"
+    #proposal = "(hltCaloHTMHT.sumEt>350 && hltCaloMET.pt>65 && hltCaloMETClean.pt>55 && hltPFHTMHTNoPU.sumEt>400 && hltPFMET.pt>80 && Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>30)>1 && Sum$(abs(hltPFJetsL1FastL2L3NoPU.eta)<2.6 && hltPFJetsL1FastL2L3NoPU.pt>40)>1)"
+
+    ## btag
+    #sel_bench = "(Sum$(patJets.pt>30 && abs(patJets.eta)<2.5)>1 && patJets[0].pt>50 && abs(patJets[0].eta)<2.5 && patJets[1].pt>50 && abs(patJets[1].eta)<2.5 && patJets[0].jetID==1 && patJets[1].jetID==1 && patGlobal.bjet_maxcsv>0.898)"
+    #selection = sel_noNoise + "*" + sel_bench
+    ##kTrig = "btag"
+    #kTrig = "PFMET80CJ30x2CSV07"
+    #proposal = "(hltCaloMET.pt>65 && hltCaloMETClean.pt>55 && Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>20)>1 && hltCaloGlobal.bjet_maxcsv>0.7 && Sum$(abs(hltPFJetsL1FastL2L3NoPU.eta)<2.6 && hltPFJetsL1FastL2L3NoPU.pt>30)>1 && hltPFMET.pt>80)"
+
+    # btag (mono)
+    sel_bench = "(Sum$(patJets.pt>30 && abs(patJets.eta)<2.5)>0 && patJets[0].pt>100 && abs(patJets[0].eta)<2.5 && patJets[0].jetID==1 && patGlobal.bjet_maxcsv>0.898)"
     selection = sel_noNoise + "*" + sel_bench
-    #kTrig = "DiCentralJetSUS"
-    kTrig = "PFMET80CJ60x2"
-    proposal = "(hltCaloMET.pt>65 && hltCaloMETClean.pt>55 && Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>50)>1 && Sum$(abs(hltPFJetsL1FastL2L3NoPU.eta)<2.6 && hltPFJetsL1FastL2L3NoPU.pt>60)>1 && (hltPFMET.pt>80||hltPFMETNoMu.pt>80) && hltPFGlobal.dijet_mindphi_2cj>0.3)"
+    #kTrig = "btag"
+    kTrig = "PFMET100CJ80CSV07"
+    proposal = "(hltCaloMET.pt>70 && hltCaloMETClean.pt>60 && Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>70)>0 && hltCaloGlobal.bjet_maxcsv>0.7 && Sum$(abs(hltPFJetsL1FastL2L3NoPU.eta)<2.6 && hltPFJetsL1FastL2L3NoPU.pt>80)>0 && hltPFMET.pt>100)"
+
+    ## btag (control)
+    #sel_bench = "(Sum$(patJets.pt>30 && abs(patJets.eta)<2.5)>1 && patJets[0].pt>50 && abs(patJets[0].eta)<2.5 && patJets[1].pt>50 && abs(patJets[1].eta)<2.5 && patJets[0].jetID==1 && patJets[1].jetID==1 && recoPFMETT0T1.pt>100)"
+    #selection = sel_noNoise + "*" + sel_bench
+    ##kTrig = "btag"
+    #kTrig = "PFMET80CJ30x2ctrl"
+    #proposal = "(hltCaloMET.pt>0 && hltCaloMETClean.pt>0 && Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>20)>1 && hltCaloGlobal.bjet_maxcsv>0.7 && Sum$(abs(hltPFJetsL1FastL2L3NoPU.eta)<2.6 && hltPFJetsL1FastL2L3NoPU.pt>30)>1 && hltPFMET.pt>0)"
+
+    ## btag (mono control)
+    #sel_bench = "(Sum$(patJets.pt>30 && abs(patJets.eta)<2.5)>0 && patJets[0].pt>100 && abs(patJets[0].eta)<2.5 && patJets[0].jetID==1 && recoPFMETT0T1.pt>120)"
+    #selection = sel_noNoise + "*" + sel_bench
+    ##kTrig = "btag"
+    #kTrig = "PFMET100CJ80ctrl"
+    #proposal = "(hltCaloMET.pt>0 && hltCaloMETClean.pt>0 && Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>70)>0 && hltCaloGlobal.bjet_maxcsv>0.7 && Sum$(abs(hltPFJetsL1FastL2L3NoPU.eta)<2.6 && hltPFJetsL1FastL2L3NoPU.pt>80)>0 && hltPFMET.pt>0)"
 
 
+    ## REMEMBER TO SET 'selection' !!
     categories = [
         ("(triggerFlags[%i] || triggerFlags[%i])" %(triggers.index('HLT_PFMET150_v7'), triggers.index('HLT_PFMET180_v7')) ),
         ("(triggerFlags[%i])" %(triggers.index('HLT_MonoCentralPFJet80_PFMETnoMu105_NHEF0p95_v4')) ),
@@ -336,11 +386,12 @@ if sections["makedataset"]:
         ]
     variables = [
         "recoPFMETT0T1.pt",
-        "patMPT.pt",
-        "hltPFMET.pt",
-        "hltCaloMET.pt",
-        "hltCaloMETClean.pt",
-        "hltTrackMET.pt",
+        #"patMPT.pt",
+        "patGlobal.bjet_maxcsv",
+        #"hltPFMET.pt",
+        #"hltCaloMET.pt",
+        #"hltCaloMETClean.pt",
+        #"hltTrackMET.pt",
         ]
     rootfilename = "dataset_%s.root" % kTrig
     MakeTree(chain, selection, categories, variables, outfilename=rootfilename)
@@ -364,7 +415,7 @@ if sections["makefits"]:
     fitparams = [
         (170,  80, 250),  # mean
         ( 20,   1,  50),  # sigma
-        (0.92, 0.3, 1.0),  # plateau
+        (0.9, 0.3, 1.0),  # plateau
         ]
     plotting.append((cat, kTrig, fitparams, xlow, xup))
 
@@ -401,45 +452,47 @@ if sections["makefits"]:
         ]
     plotting.append((cat, kTrig, fitparams, xlow, xup))
 
-    xlow, xup = 40, 320
+    xlow, xup = 60, 400
     cat = "cat4"
-    kTrig = "HT"
+    #kTrig = "HT"
+    kTrig = "PFMET100HT400"
     fitparams = [
-        (140,  50, 250),  # mean
+        (130,  50, 250),  # mean
         ( 20,   1,  50),  # sigma
-        (0.4, 0.2, 0.7),  # plateau
+        (0.8, 0.3, 1.0),  # plateau
         ]
-    #plotting.append((cat, kTrig, fitparams, xlow, xup))
+    plotting.append((cat, kTrig, fitparams, xlow, xup))
 
     xlow, xup = 40, 320
     cat = "cat5"
-    kTrig = "btag"
+    #kTrig = "btag"
+    kTrig = "PFMET80CJ30x2CSV07"
     fitparams = [
         (110,  40, 250),  # mean
         ( 20,   1,  50),  # sigma
-        (0.2,0.05,0.25),  # plateau
+        (0.8, 0.3, 1.0),  # plateau
         ]
-    #plotting.append((cat, kTrig, fitparams, xlow, xup))
+    plotting.append((cat, kTrig, fitparams, xlow, xup))
 
     xlow, xup = 30, 240
     cat = "cat6"
     kTrig = "VBFAll"
     fitparams = [
-        ( 100,  40, 220),  # mean
-        (  20,   5,  60),  # sigma
-        (0.02,0.01,0.04),  # plateau
+        (100,  40, 220),  # mean
+        ( 20,   5,  60),  # sigma
+        (0.8, 0.2, 1.0),  # plateau
         ]
-    #plotting.append((cat, kTrig, fitparams, xlow, xup))
+    plotting.append((cat, kTrig, fitparams, xlow, xup))
 
     xlow, xup = 30, 240
     cat = "cat7"
     kTrig = "VBFLead"
     fitparams = [
-        ( 100,  40, 220),  # mean
-        (  20,   5,  60),  # sigma
-        (0.02,0.01,0.04),  # plateau
+        (100,  40, 220),  # mean
+        ( 20,   5,  60),  # sigma
+        (0.8, 0.2, 1.0),  # plateau
         ]
-    #plotting.append((cat, kTrig, fitparams, xlow, xup))
+    plotting.append((cat, kTrig, fitparams, xlow, xup))
 
 
     # Make fits and plots
@@ -447,6 +500,7 @@ if sections["makefits"]:
     for p in plotting:
         (cat, kTrig, fitparams, xlow, xup) = p
         nfitparams = len(fitparams)
+        if cat != "cat5":  continue
 
         var = "var0"
         xtitle = "#scale[0.7]{RECO} T0T1 PFMET [GeV]"
@@ -493,7 +547,7 @@ if sections["makenewfits"]:
     fitparams = [
         (170,  80, 250),  # mean
         ( 20,   1,  50),  # sigma
-        (0.92, 0.3, 1.0),  # plateau
+        (0.9, 0.3, 1.0),  # plateau
         ]
     plotting.append((cat, newcat, kTrig, fitparams, xlow, xup))
 
@@ -545,49 +599,64 @@ if sections["makenewfits"]:
         ]
     plotting.append((cat, newcat, kTrig, fitparams, xlow, xup))
 
-    xlow, xup = 40, 320
+    xlow, xup = 60, 400
     cat = "cat4"
     newcat = "cat10"
-    kTrig = "HT"
+    #kTrig = "HT"
+    kTrig = "PFMET100HT400"
     fitparams = [
-        (140,  50, 250),  # mean
+        (130,  50, 250),  # mean
         ( 20,   1,  50),  # sigma
-        (0.4, 0.2, 0.7),  # plateau
+        (0.8, 0.3, 1.0),  # plateau
         ]
-    #plotting.append((cat, newcat, kTrig, fitparams, xlow, xup))
+    plotting.append((cat, newcat, kTrig, fitparams, xlow, xup))
+
+    xlow, xup = 40, 400
+    cat = "cat4"
+    newcat = "cat10"
+    #kTrig = "HT"
+    kTrig = "PFMET80HT400"
+    fitparams = [
+        (130,  50, 250),  # mean
+        ( 20,   1,  50),  # sigma
+        (0.8, 0.3, 1.0),  # plateau
+        ]
+    plotting.append((cat, newcat, kTrig, fitparams, xlow, xup))
 
     xlow, xup = 40, 320
     cat = "cat5"
     newcat = "cat10"
-    kTrig = "btag"
+    #kTrig = "btag"
+    #kTrig = "PFMET80CJ30x2CSV07"
+    kTrig = "PFMET100CJ80CSV07"
     fitparams = [
         (110,  40, 250),  # mean
         ( 20,   1,  50),  # sigma
-        (0.2,0.05,0.25),  # plateau
+        (0.8, 0.3, 1.0),  # plateau
         ]
-    #plotting.append((cat, newcat, kTrig, fitparams, xlow, xup))
+    plotting.append((cat, newcat, kTrig, fitparams, xlow, xup))
 
     xlow, xup = 30, 240
     cat = "cat6"
     newcat = "cat10"
     kTrig = "VBFAll"
     fitparams = [
-        ( 100,  40, 220),  # mean
-        (  20,   5,  60),  # sigma
-        (0.02,0.01,0.04),  # plateau
+        (100,  40, 220),  # mean
+        ( 20,   5,  60),  # sigma
+        (0.8, 0.2, 1.0),  # plateau
         ]
-    #plotting.append((cat, newcat, kTrig, fitparams, xlow, xup))
+    plotting.append((cat, newcat, kTrig, fitparams, xlow, xup))
 
     xlow, xup = 30, 240
     cat = "cat7"
     newcat = "cat10"
     kTrig = "VBFLead"
     fitparams = [
-        ( 100,  40, 220),  # mean
-        (  20,   5,  60),  # sigma
-        (0.02,0.01,0.04),  # plateau
+        (100,  40, 220),  # mean
+        ( 20,   5,  60),  # sigma
+        (0.8, 0.2, 1.0),  # plateau
         ]
-    #plotting.append((cat, newcat, kTrig, fitparams, xlow, xup))
+    plotting.append((cat, newcat, kTrig, fitparams, xlow, xup))
 
 
     # Make fits and plots
@@ -595,6 +664,7 @@ if sections["makenewfits"]:
     for p in plotting:
         (cat, newcat, kTrig, fitparams, xlow, xup) = p
         nfitparams = len(fitparams)
+        if cat != "cat5":  continue
 
         var = "var0"
         xtitle = "#scale[0.7]{RECO} T0T1 PFMET [GeV]"
@@ -626,3 +696,71 @@ if sections["makenewfits"]:
     print "-" * 40
     for t in writing:  print t
 
+
+#_______________________________________________________________________________
+# Make fits #2
+if sections["makefits2"]:
+    if plotting: del plotting[:]
+    if writing: del writing[:]
+
+    ## effEMG experiment
+    #eff = "effEMG"
+    #var = "var0"
+    #xtitle = "#scale[0.7]{RECO} T0T1 PFMET [GeV]"
+    #xlow, xup = 80, 400
+    #cat = "cat0"
+    #newcat = "cat10"
+    #kTrig = "PFMET150"
+    #fitparams = [
+    #    (170,  80, 250),  # mean
+    #    ( 20,   1,  40),  # sigma
+    #    (0.9, 0.3, 1.0),  # plateau
+    #    (1.2, 0.5, 5.0),  # shape
+    #    ]
+    #plotting.append((cat, kTrig, fitparams, xlow, xup))
+
+    ## CSV turn on curve
+    eff = "effError"
+    var = "var1"
+    xtitle = "#scale[0.7]{RECO} max CSV"
+    xlow, xup = 0, 1
+    cat = "cat10"
+    #kTrig = "btag"
+    #kTrig = "PFMET80CJ30x2ctrl"
+    kTrig = "PFMET100CJ80ctrl"
+    fitparams = [
+        (0.69, 0.1, 1.2),  # mean
+        (0.25, 0.1, 2.0),  # sigma
+        (0.90, 0.3, 1.0),  # plateau
+        ]
+    plotting.append((cat, kTrig, fitparams, xlow, xup))
+
+
+    # Make fits and plots
+    c1 = TCanvas("c1", "c1")
+    for p in plotting:
+        (cat, kTrig, fitparams, xlow, xup) = p
+        nfitparams = len(fitparams)
+
+        ws = RooWorkspace("workspace", "workspace")
+        RunFactory(ws, eff, fitparams, var, [cat], xlow=xlow, xup=xup)
+        #ws.var("fit0").setConstant(1); ws.var("fit2").setConstant(1); nfitparams -= 2
+        #wsfilename = "workspace.root"
+        #ws.writeToFile(wsfilename)
+
+        rootfilename = "dataset_%s.root" % kTrig
+        dsfile = TFile.Open(rootfilename)
+        ds = RooDataSet("data", "data", RooArgSet(ws.var(var), ws.cat(cat)), RooFit.Import(dsfile.tree)); ds.Print()
+
+        model = cat.replace("cat","model")
+        res = ws.pdf(model).fitTo(ds, RooFit.ConditionalObservables(RooArgSet(ws.var(var))), RooFit.Minimizer("Minuit"), RooFit.Save(), RooFit.Range(0.4,1.0))
+
+        ymax = fitparams[2][2]+0.1
+        if ymax < 0.2:  ymax = fitparams[2][2]+0.01
+        text = draw(ws, res, eff, var, cat, xtitle, kTrig, nfitparams, xlow=xlow, xup=xup, ymax=ymax)
+        for t in text:  writing.append(t)
+        #save(imgdir, "fiteff_" + kTrig + "_" + eff)
+
+    # Printout
+    print "-" * 40
+    for t in writing:  print t

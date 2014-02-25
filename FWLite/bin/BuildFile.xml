@@ -5,7 +5,7 @@
 <use   name="FWCore/FWLite"/>
 <use   name="DataFormats/FWLite"/>
 <use   name="FWCore/PythonParameterSet"/>
-<!--use   name="DataFormats/Luminosity"/-->
+<use   name="DataFormats/Luminosity"/>
 <!--use   name="CommonTools/Utils"/-->
 <!--use   name="CommonTools/ParticleFlow"/-->
 <use   name="DataFormats/PatCandidates"/>

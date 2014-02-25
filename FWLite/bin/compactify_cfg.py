@@ -259,24 +259,28 @@ process.handler = cms.PSet(
     )
 
 import csv
-lumiA = []
-lumiB = []
-lumiC = []
+lumilevels = []
+lumilevels_v = [0,800,900,1000,1100,1200,1350,1500]
+for v in lumilevels_v:  lumilevels.append([])
 with open('lumibyls_HLT_MET80_v5.csv') as csvfile:
     reader = csv.reader(csvfile)
     for row in reader:
         if not row[7][0].isdigit():  continue
         runlumi = int(row[0].split(":")[0]) * 100000 + int(row[1].split(":")[0])
         effective = float(row[7])
-        if effective > 1200:
-            lumiC.append(runlumi)
-        elif effective > 800:
-            lumiB.append(runlumi)
-        else:
-            lumiA.append(runlumi)
+        for i, v in enumerate(reversed(lumilevels_v)):
+            if effective > v:
+                lumilevels[-1-i].append(runlumi)
+                break
 
 process.lumicalc = cms.PSet(
-    lumiA = cms.vuint64(lumiA),
-    lumiB = cms.vuint64(lumiB),
-    lumiC = cms.vuint64(lumiC),
+    lumi0 = cms.vuint64(lumilevels[0]),
+    lumi1 = cms.vuint64(lumilevels[1]),
+    lumi2 = cms.vuint64(lumilevels[2]),
+    lumi3 = cms.vuint64(lumilevels[3]),
+    lumi4 = cms.vuint64(lumilevels[4]),
+    lumi5 = cms.vuint64(lumilevels[5]),
+    lumi6 = cms.vuint64(lumilevels[6]),
+    lumi7 = cms.vuint64(lumilevels[7]),
     )
+

@@ -67,7 +67,7 @@ gROOT.LoadMacro("HelperFunctions.h")
 
 #tfile = TFile.Open("../bin/compactified.L1ETM40.0.root")
 #tfile.tree = tfile.Events
-tfile = TFile.Open("../bin/compactified.L1ETM40.3.root")
+tfile = TFile.Open("../bin/compactified.L1ETM40.4.root")
 tree = tfile.tree
 
 sections = {}
@@ -75,18 +75,6 @@ sections["puremet"]         = False
 sections["puremet_clean"]   = False
 sections["monojet"]         = False
 sections["monojet_clean"]   = False
-sections["higdijet"]        = False
-sections["higdijet_clean"]  = False
-sections["susdijet"]        = False
-sections["susdijet_clean"]  = False
-sections["multijet"]        = False
-sections["multijet_clean"]  = False
-sections["bjet"]            = False
-sections["bjet_clean"]      = False
-sections["vbf"]             = False
-sections["vbf_clean"]       = False
-
-sections["puremet_venn"]    = False
 
 sections["future_triggers"] = True
 
@@ -136,14 +124,13 @@ if sections["puremet"]:
         ]
     counts = count(sel_trigs); pprint(counts)
 
-if sections["puremet_venn"]:
-    sel_trigs = [
-        "(hltCaloMET.pt>80 && hltPFMET.pt>150 && (hltCaloMETClean.pt<50 || hltCaloMETCleanUsingJetID.pt<50))",
-        "(hltCaloMET.pt>80 && hltPFMET.pt>150 && (hltCaloMETClean.pt<50 && hltCaloMETCleanUsingJetID.pt<9999))",
-        "(hltCaloMET.pt>80 && hltPFMET.pt>150 && (hltCaloMETClean.pt<9999 && hltCaloMETCleanUsingJetID.pt<50))",
-        "(hltCaloMET.pt>80 && hltPFMET.pt>150 && (hltCaloMETClean.pt<50 && hltCaloMETCleanUsingJetID.pt<50))",
-        ]
-    counts = count(sel_trigs); pprint(counts, overlap=True)
+    #sel_trigs = [
+    #    "(hltCaloMET.pt>80 && hltPFMET.pt>150 && (hltCaloMETClean.pt<50 || hltCaloMETCleanUsingJetID.pt<50))",
+    #    "(hltCaloMET.pt>80 && hltPFMET.pt>150 && (hltCaloMETClean.pt<50 && hltCaloMETCleanUsingJetID.pt<9999))",
+    #    "(hltCaloMET.pt>80 && hltPFMET.pt>150 && (hltCaloMETClean.pt<9999 && hltCaloMETCleanUsingJetID.pt<50))",
+    #    "(hltCaloMET.pt>80 && hltPFMET.pt>150 && (hltCaloMETClean.pt<50 && hltCaloMETCleanUsingJetID.pt<50))",
+    #    ]
+    #counts = count(sel_trigs); pprint(counts, overlap=True)
 
 if sections["puremet_clean"]:
     sel_trigs = [
@@ -164,8 +151,6 @@ if sections["monojet_clean"]:
         ]
     counts = count(sel_trigs); pprint(counts)
 
-
-
 if sections["future_triggers"]:
     ## PFMET150
     #sel_trig0 = "(hltCaloMET.pt>80 && hltPFMET.pt>150)"
@@ -176,13 +161,22 @@ if sections["future_triggers"]:
     #sel_trig1 = "(Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>85)>0 && hltCaloMET.pt>70 && hltCaloMETClean.pt>60 && Sum$(abs(hltPFJetsL1FastL2L3NoPU.eta)<2.6 && hltPFJetsL1FastL2L3NoPU.pt>100)>0 && (hltPFMETNoMu.pt>100||hltPFMET.pt>100) && hltPFJetsL1FastL2L3[0].nhf<0.95 && hltPFJetsL1FastL2L3[0].nch>0)"
     ##sel_trig1 = "(Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>70)>0 && hltCaloMET.pt>80 && hltCaloMETClean.pt>70 && Sum$(abs(hltPFJetsL1FastL2L3NoPU.eta)<2.6 && hltPFJetsL1FastL2L3NoPU.pt>80)>0 && (hltPFMETNoMu.pt>120||hltPFMET.pt>120) && hltPFJetsL1FastL2L3[0].nhf<0.95 && hltPFJetsL1FastL2L3[0].nch>0)"
 
-    # DiCentralJetHIG
-    sel_trig0 = "(hltCaloMET.pt>50 && hltCaloMETClean.pt>25 && Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>15)>1 && Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>50)>0 && hltCaloGlobal.dijet_maxpt>100 && hltCaloGlobal.dijet_mindphi_j40>0.5 && Sum$(abs(hltPFJetsL1FastL2L3.eta)<2.6 && hltPFJetsL1FastL2L3.pt>25)>1 && Sum$(abs(hltPFJetsL1FastL2L3.eta)<2.6 && hltPFJetsL1FastL2L3.pt>60)>0 && hltPFMET.pt>100)"
-    sel_trig0 = "(hltCaloMET.pt>70 && hltCaloMETClean.pt>60 && Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>20)>1 && Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>50)>0 && Sum$(abs(hltPFJetsL1FastL2L3NoPU.eta)<2.6 && hltPFJetsL1FastL2L3NoPU.pt>30)>1 && Sum$(abs(hltPFJetsL1FastL2L3NoPU.eta)<2.6 && hltPFJetsL1FastL2L3NoPU.pt>60)>0 && (hltPFMET.pt>100||hltPFMETNoMu.pt>100) && hltPFGlobal.dijet_mindphi_2cj>0.5)"
+    ## DiCentralJetHIG
+    #sel_trig0 = "(hltCaloMET.pt>50 && hltCaloMETClean.pt>25 && Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>15)>1 && Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>50)>0 && hltCaloGlobal.dijet_maxpt>100 && hltCaloGlobal.dijet_mindphi_j40>0.5 && Sum$(abs(hltPFJetsL1FastL2L3.eta)<2.6 && hltPFJetsL1FastL2L3.pt>25)>1 && Sum$(abs(hltPFJetsL1FastL2L3.eta)<2.6 && hltPFJetsL1FastL2L3.pt>60)>0 && hltPFMET.pt>100)"
+    #sel_trig1 = "(hltCaloMET.pt>70 && hltCaloMETClean.pt>60 && Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>20)>1 && Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>50)>0 && Sum$(abs(hltPFJetsL1FastL2L3NoPU.eta)<2.6 && hltPFJetsL1FastL2L3NoPU.pt>30)>1 && Sum$(abs(hltPFJetsL1FastL2L3NoPU.eta)<2.6 && hltPFJetsL1FastL2L3NoPU.pt>60)>0 && (hltPFMET.pt>100||hltPFMETNoMu.pt>100) && hltPFGlobal.dijet_mindphi_2cj>0.5)"
 
-    # DiCentralJetSUS
+    ## DiCentralJetSUS
     #sel_trig0 = "(hltCaloMET.pt>80 && Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>20)>1 && Sum$(abs(hltPFJetsL1FastL2L3NoPU.eta)<2.6 && hltPFJetsL1FastL2L3NoPU.pt>50)>1 && (hltPFMET.pt>80||hltPFMETNoMu.pt>80) )"
-    sel_trig1 = "(hltCaloMET.pt>65 && hltCaloMETClean.pt>55 && Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>50)>1 && Sum$(abs(hltPFJetsL1FastL2L3NoPU.eta)<2.6 && hltPFJetsL1FastL2L3NoPU.pt>60)>1 && (hltPFMET.pt>80||hltPFMETNoMu.pt>80) && hltPFGlobal.dijet_mindphi_2cj>0.3)"
+    #sel_trig1 = "(hltCaloMET.pt>65 && hltCaloMETClean.pt>55 && Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>50)>1 && Sum$(abs(hltPFJetsL1FastL2L3NoPU.eta)<2.6 && hltPFJetsL1FastL2L3NoPU.pt>60)>1 && (hltPFMET.pt>80||hltPFMETNoMu.pt>80) && hltPFGlobal.dijet_mindphi_2cj>0.3)"
+
+    ## Multijet
+    #sel_trig0 = "(hltCaloHTMHT.sumEt>300 && hltCaloHTMHT.pt>75 && hltPFHTMHTNoPU.sumEt>350 && (hltCaloHTMHT.pt>150 || hltPFMET.pt>100))"
+    #sel_trig1 = "(hltCaloHTMHT.sumEt>350 && hltCaloMET.pt>65 && hltCaloMETClean.pt>55 && hltPFHTMHTNoPU.sumEt>400 && hltPFMET.pt>80 && Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>30)>1 && Sum$(abs(hltPFJetsL1FastL2L3NoPU.eta)<2.6 && hltPFJetsL1FastL2L3NoPU.pt>40)>1)"
+
+    ## btag
+    #sel_trig0 = "(hltCaloMET.pt>65 && Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>20)>1 && hltCaloGlobal.bjet_maxcsv>0.7 && Sum$(abs(hltPFJetsL1FastL2L3.eta)<2.6 && hltPFJetsL1FastL2L3.pt>30)>1 && hltPFMET.pt>80)"
+    sel_trig0 = "(hltCaloMET.pt>65 && hltCaloMETClean.pt>55 && Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>20)>1 && hltCaloGlobal.bjet_maxcsv>0.7 && Sum$(abs(hltPFJetsL1FastL2L3NoPU.eta)<2.6 && hltPFJetsL1FastL2L3NoPU.pt>30)>1 && hltPFMET.pt>80)"
+    sel_trig1 = "(hltCaloMET.pt>70 && hltCaloMETClean.pt>60 && Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>70)>0 && hltCaloGlobal.bjet_maxcsv>0.7 && Sum$(abs(hltPFJetsL1FastL2L3NoPU.eta)<2.6 && hltPFJetsL1FastL2L3NoPU.pt>80)>0 && hltPFMET.pt>100)"
 
 
     # Count!
@@ -193,8 +187,5 @@ if sections["future_triggers"]:
         sel_trig0 + "&&" + sel_trig1,
         ]
     counts = count(sel_trigs); pprint(counts, overlap=True)
-
-
-
 
 

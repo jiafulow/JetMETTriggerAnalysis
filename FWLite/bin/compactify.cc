@@ -14,6 +14,8 @@
 #include "FWCore/FWLite/interface/AutoLibraryLoader.h"
 #include "FWCore/ParameterSet/interface/ProcessDesc.h"
 #include "FWCore/PythonParameterSet/interface/PythonProcessDesc.h"
+// CMSSW: FWFull
+#include "DataFormats/Luminosity/interface/LumiSummary.h"
 // CMSSW: JetMETTriggerAnalysis
 #include "JetMETTriggerAnalysis/FWLite/interface/SimpleCandidate.h"
 #include "JetMETTriggerAnalysis/FWLite/interface/Handler.h"
@@ -431,9 +433,14 @@ int main(int argc, char *argv[]) {
     Handler handler(handlerpset, isData);
 
     // Read from lumicalc pset
-    const std::vector<unsigned long long>& lumiA = lumicalcpset.getParameter<std::vector<unsigned long long> >("lumiA");
-    const std::vector<unsigned long long>& lumiB = lumicalcpset.getParameter<std::vector<unsigned long long> >("lumiB");
-    const std::vector<unsigned long long>& lumiC = lumicalcpset.getParameter<std::vector<unsigned long long> >("lumiC");
+    const std::vector<unsigned long long>& lumi0 = lumicalcpset.getParameter<std::vector<unsigned long long> >("lumi0");
+    const std::vector<unsigned long long>& lumi1 = lumicalcpset.getParameter<std::vector<unsigned long long> >("lumi1");
+    const std::vector<unsigned long long>& lumi2 = lumicalcpset.getParameter<std::vector<unsigned long long> >("lumi2");
+    const std::vector<unsigned long long>& lumi3 = lumicalcpset.getParameter<std::vector<unsigned long long> >("lumi3");
+    const std::vector<unsigned long long>& lumi4 = lumicalcpset.getParameter<std::vector<unsigned long long> >("lumi4");
+    const std::vector<unsigned long long>& lumi5 = lumicalcpset.getParameter<std::vector<unsigned long long> >("lumi5");
+    const std::vector<unsigned long long>& lumi6 = lumicalcpset.getParameter<std::vector<unsigned long long> >("lumi6");
+    const std::vector<unsigned long long>& lumi7 = lumicalcpset.getParameter<std::vector<unsigned long long> >("lumi7");
 
 
     //__________________________________________________________________________
@@ -465,7 +472,7 @@ int main(int argc, char *argv[]) {
     simple::MET hltPFHTMHTNoPU;
     simple::Global hltCaloGlobal;
     simple::Global hltPFGlobal;
-    unsigned int lumilevel;
+    int lumilevel;
     // non-HLT
     std::vector<simple::Particle> recoPFCandidates;
     std::vector<simple::PFJet> patJets;
@@ -478,7 +485,6 @@ int main(int argc, char *argv[]) {
     simple::MET patMPT;
     simple::MET patHTMHT;
     simple::Global patGlobal;
-    unsigned int patJetTopo;
 
 
     TFile* outfile = new TFile(outfilename, "RECREATE");
@@ -526,7 +532,6 @@ int main(int argc, char *argv[]) {
     outtree->Branch("patMPT", &patMPT);
     outtree->Branch("patHTMHT", &patHTMHT);
     outtree->Branch("patGlobal", &patGlobal);
-    outtree->Branch("patJetTopo", &patJetTopo);
 
 
     //__________________________________________________________________________
@@ -539,10 +544,11 @@ int main(int argc, char *argv[]) {
         }
     }
     fwlite::ChainEvent ev(infilenames);
+    fwlite::Handle<LumiSummary> lumisummary;
     int ievent = 0;
     int jevent = 0;
-    unsigned long long runlumi_old = 0;
-    unsigned int lumilevel_old = 0;
+    unsigned long long runlumi = 0, runlumi_old = 0;
+    int lumilevel_old = -1;
     for(ev.toBegin(); !ev.atEnd(); ++ev, ++ievent) {
         // Skip events
         if (ievent < skipEvents)  continue;
@@ -568,6 +574,14 @@ int main(int argc, char *argv[]) {
         simple_fill(ev, nPV, nGoodPV, nTruePV, goodjson, simpleEvent);
         weightGenEvent = (isData ? 1.0 : handler.genEventInfo->weight());
 
+        //______________________________________________________________________
+        // Inst lumi
+        lumisummary.getByLabel(ev.getLuminosityBlock(), "lumiProducer");
+        //if (lumisummary.isValid()) {  // FIXME: forgot to store!
+        //    float instlumi = lumisummary->avgInsDelLumi();     // average inst lumi delivered
+        //    float instreclumi = lumisummary->avgInsRecLumi();  // average inst lumi delivered, corrected by deadtime
+        //    std::cout << "inst lumi = " << instlumi << " Hz/ub, corrected = " << instreclumi << " Hz/ub." << std::endl;
+        //}
 
         //______________________________________________________________________
         // Trigger results
@@ -869,8 +883,8 @@ int main(int argc, char *argv[]) {
         //______________________________________________________________________
         // lumilevel
         if (verbose)  std::cout << "compactify: Begin filling lumilevel..." << std::endl;
-        lumilevel = 0;
-        unsigned long long runlumi = ev.id().run();
+        lumilevel = -1;
+        runlumi = ev.id().run();
         runlumi *= 100000;
         runlumi += ev.id().luminosityBlock();
         if (runlumi == runlumi_old) {
@@ -879,23 +893,29 @@ int main(int argc, char *argv[]) {
 
         if (ev.id().run() != 1) {  // not MC
             std::vector<unsigned long long>::const_iterator it;
-            if (lumilevel == 0) {
-                it = std::find(lumiC.begin(), lumiC.end(), runlumi);
-                if (it != lumiC.end())  lumilevel = 3;
+            if (lumilevel == -1) {
+                if      (std::find(lumi7.begin(), lumi7.end(), runlumi) != lumi7.end())
+                    lumilevel = 7;
+                else if (std::find(lumi6.begin(), lumi6.end(), runlumi) != lumi6.end())
+                    lumilevel = 6;
+                else if (std::find(lumi5.begin(), lumi5.end(), runlumi) != lumi5.end())
+                    lumilevel = 5;
+                else if (std::find(lumi4.begin(), lumi4.end(), runlumi) != lumi4.end())
+                    lumilevel = 4;
+                else if (std::find(lumi3.begin(), lumi3.end(), runlumi) != lumi3.end())
+                    lumilevel = 3;
+                else if (std::find(lumi2.begin(), lumi2.end(), runlumi) != lumi2.end())
+                    lumilevel = 2;
+                else if (std::find(lumi1.begin(), lumi1.end(), runlumi) != lumi1.end())
+                    lumilevel = 1;
+                else if (std::find(lumi0.begin(), lumi0.end(), runlumi) != lumi0.end())
+                    lumilevel = 0;
+                else
+                    std::cout << "ERROR: runlumi " << runlumi << " not found!" << std::endl;
             }
-            if (lumilevel == 0) {
-                it = std::find(lumiB.begin(), lumiB.end(), runlumi);
-                if (it != lumiB.end())  lumilevel = 2;
-            }
-            if (lumilevel == 0) {
-                it = std::find(lumiA.begin(), lumiA.end(), runlumi);
-                if (it != lumiA.end())  lumilevel = 1;
-            }
-            if (lumilevel == 0)
-                std::cout << "ERROR: runlumi " << runlumi << " not found!" << std::endl;
-            else if (lumilevel_old == 0 || runlumi_old != runlumi) {
-                runlumi_old = runlumi;
+            if (lumilevel_old == -1 || runlumi_old != runlumi) {
                 lumilevel_old = lumilevel;
+                runlumi_old = runlumi;
             }
         }
 
@@ -1003,12 +1023,6 @@ int main(int argc, char *argv[]) {
         patGlobal.rho_kt6            = *handler.recoRho_kt6PFJets;
         patGlobal.njets_j30          = eval_njets(*handler.patJets, 30., 4.7);
         patGlobal.njets_cj30         = eval_njets(*handler.patJets, 30., 2.5);
-
-
-        //______________________________________________________________________
-        // patJetTopo
-        if (verbose)  std::cout << "compactify: Begin filling patJetTopo..." << std::endl;
-        patJetTopo = 0;  // FIXME
 
 
         //______________________________________________________________________
