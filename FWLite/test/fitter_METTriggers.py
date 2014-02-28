@@ -36,36 +36,36 @@ line.SetLineStyle(2)
 
 # from compactify_cfg.py
 triggers = [
-        # MET
-        'HLT_DiCentralJetSumpT100_dPhi05_DiCentralPFJet60_25_PFMET100_HBHENoiseCleaned_v5',
-        'HLT_DiCentralPFJet30_PFMET80_BTagCSV07_v5',
-        'HLT_DiCentralPFJet30_PFMET80_v6',
-        'HLT_DiCentralPFNoPUJet50_PFMETORPFMETNoMu80_v4',
-        'HLT_DiPFJet40_PFMETnoMu65_MJJ600VBF_LeadingJets_v9',
-        'HLT_DiPFJet40_PFMETnoMu65_MJJ800VBF_AllJets_v9',
-        'HLT_L1ETM100_v2',
-        'HLT_L1ETM30_v2',
-        'HLT_L1ETM40_v2',
-        'HLT_L1ETM70_v2',
-        #'HLT_MET120_HBHENoiseCleaned_v6',
-        #'HLT_MET120_v13',
-        #'HLT_MET200_HBHENoiseCleaned_v5',
-        #'HLT_MET200_v12',
-        #'HLT_MET300_HBHENoiseCleaned_v5',
-        #'HLT_MET300_v4',
-        #'HLT_MET400_HBHENoiseCleaned_v5',
-        #'HLT_MET400_v7',
-        'HLT_MonoCentralPFJet80_PFMETnoMu105_NHEF0p95_v4',
-        'HLT_PFMET150_v7',
-        'HLT_PFMET180_v7',
-        # HTMHT
-        'HLT_PFNoPUHT350_PFMET100_v4',
-        'HLT_PFNoPUHT400_PFMET100_v4',
-        # JetHT
-        'HLT_MET80_Track50_dEdx3p6_v6',
-        'HLT_MET80_Track60_dEdx3p7_v6',
-        'HLT_MET80_v5',
-        ]
+    # MET
+    'HLT_DiCentralJetSumpT100_dPhi05_DiCentralPFJet60_25_PFMET100_HBHENoiseCleaned_v5',
+    'HLT_DiCentralPFJet30_PFMET80_BTagCSV07_v5',
+    'HLT_DiCentralPFJet30_PFMET80_v6',
+    'HLT_DiCentralPFNoPUJet50_PFMETORPFMETNoMu80_v4',
+    'HLT_DiPFJet40_PFMETnoMu65_MJJ600VBF_LeadingJets_v9',
+    'HLT_DiPFJet40_PFMETnoMu65_MJJ800VBF_AllJets_v9',
+    'HLT_L1ETM100_v2',
+    'HLT_L1ETM30_v2',
+    'HLT_L1ETM40_v2',
+    'HLT_L1ETM70_v2',
+    #'HLT_MET120_HBHENoiseCleaned_v6',
+    #'HLT_MET120_v13',
+    #'HLT_MET200_HBHENoiseCleaned_v5',
+    #'HLT_MET200_v12',
+    #'HLT_MET300_HBHENoiseCleaned_v5',
+    #'HLT_MET300_v4',
+    #'HLT_MET400_HBHENoiseCleaned_v5',
+    #'HLT_MET400_v7',
+    'HLT_MonoCentralPFJet80_PFMETnoMu105_NHEF0p95_v4',
+    'HLT_PFMET150_v7',
+    'HLT_PFMET180_v7',
+    # HTMHT
+    'HLT_PFNoPUHT350_PFMET100_v4',
+    'HLT_PFNoPUHT400_PFMET100_v4',
+    # JetHT
+    'HLT_MET80_Track50_dEdx3p6_v6',
+    'HLT_MET80_Track60_dEdx3p7_v6',
+    'HLT_MET80_v5',
+    ]
 
 reftrig = "HLT_L1ETM40_v2"
 ireftrig = triggers.index(reftrig)
@@ -118,6 +118,7 @@ if gSystem.AccessPathName(imgdir):
 
 #_______________________________________________________________________________
 # Classes/Functions
+
 class Properties:
     """Stores stuff"""
     def __init__(self, x, y):
