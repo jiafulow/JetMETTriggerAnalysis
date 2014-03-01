@@ -114,8 +114,8 @@ sections["monojet"]         = False
 sections["monojet_clean"]   = False
 
 sections["future_triggers"] = False
-sections["future_numbers"]  = True
-sections["future_numbers2"] = False
+sections["future_numbers"]  = False
+sections["future_numbers2"] = True
 
 #imgdir = "figures_20131130/"  # for Torino workshop
 imgdir = "figures_20140206/"  # for first draft
@@ -161,11 +161,11 @@ def count_future(odict, sel, normalizeby, benchmarks={}, exclusive=False):
 
         if benchmarks:
             benchkey = benchmarks.keys()[odict.keys().index(k)]
-            vv = "(" + vv + "*" + benchmarks[benchkey] + ")"
+            vv = "(%s * %s)" % (vv, benchmarks[benchkey])
 
         if exclusive:
             exclsel += ("||" + vv)
-            vv = "("+exclsel+")"
+            vv = "(%s)" % exclsel
 
         selection = "*".join([sel, vv, normalizeby])
         tree.Project("htemp", "event.json", selection, "goff")
@@ -236,6 +236,8 @@ triggers2012D = OrderedDict([
     ("HT", "(hltCaloHTMHT.sumEt>300 && hltCaloHTMHT.pt>75 && hltPFHTMHTNoPU.sumEt>350 && (hltCaloHTMHT.pt>150 || hltPFMET.pt>100))"),
     ("btag", "(hltCaloMET.pt>65 && Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>20)>1 && hltCaloGlobal.bjet_maxcsv>0.7 && Sum$(abs(hltPFJetsL1FastL2L3.eta)<2.6 && hltPFJetsL1FastL2L3.pt>30)>1 && hltPFMET.pt>80)"),
     #("btag_ctrl", "(hltCaloMET.pt>65 && Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>20)>1 && Sum$(abs(hltPFJetsL1FastL2L3.eta)<2.6 && hltPFJetsL1FastL2L3.pt>30)>1 && hltPFMET.pt>80)"),
+    #("VBFAll", "(hltCaloMET.pt>65 && Sum$(abs(hltCaloJetsL1Fast.eta)<5.0 && hltCaloJetsL1Fast.pt>30)>1 && Sum$(abs(hltPFJetsL1FastL2L3.eta)<5.0 && hltPFJetsL1FastL2L3.pt>40)>1 && hltPFGlobal.vbf_maxmjj>800 && hltPFGlobal.vbf_maxmjj_deta>3.5 && hltPFMETNoMu.pt>65)"),
+    #("VBFLead", "(hltCaloMET.pt>65 && Sum$(abs(hltCaloJetsL1Fast.eta)<5.0 && hltCaloJetsL1Fast.pt>30)>1 && Sum$(abs(hltPFJetsL1FastL2L3.eta)<5.0 && hltPFJetsL1FastL2L3.pt>40)>1 && hltPFGlobal.vbf_leadmjj>600 && hltPFGlobal.vbf_leadmjj_deta>3.5 && hltPFMETNoMu.pt>65)"),
     ])
 
 triggers2012D_half = OrderedDict([
@@ -246,6 +248,8 @@ triggers2012D_half = OrderedDict([
     ("HT", "(hltCaloHTMHT.sumEt>300 && hltCaloHTMHT.pt>75 && hltPFHTMHTNoPU.sumEt>400 && (hltCaloHTMHT.pt>150 || hltPFMET.pt>100))"),
     ("btag", "(hltCaloMET.pt>65 && Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>20)>1 && hltCaloGlobal.bjet_maxcsv>0.7 && Sum$(abs(hltPFJetsL1FastL2L3.eta)<2.6 && hltPFJetsL1FastL2L3.pt>30)>1 && hltPFMET.pt>90)"),
     #("btag_ctrl", "(hltCaloMET.pt>65 && Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>20)>1 && Sum$(abs(hltPFJetsL1FastL2L3.eta)<2.6 && hltPFJetsL1FastL2L3.pt>30)>1 && hltPFMET.pt>90)"),
+    #("VBFAll", "(hltCaloMET.pt>65 && Sum$(abs(hltCaloJetsL1Fast.eta)<5.0 && hltCaloJetsL1Fast.pt>30)>1 && Sum$(abs(hltPFJetsL1FastL2L3.eta)<5.0 && hltPFJetsL1FastL2L3.pt>40)>1 && hltPFGlobal.vbf_maxmjj>800 && hltPFGlobal.vbf_maxmjj_deta>3.5 && hltPFMETNoMu.pt>75)"),
+    #("VBFLead", "(hltCaloMET.pt>65 && Sum$(abs(hltCaloJetsL1Fast.eta)<5.0 && hltCaloJetsL1Fast.pt>30)>1 && Sum$(abs(hltPFJetsL1FastL2L3.eta)<5.0 && hltPFJetsL1FastL2L3.pt>40)>1 && hltPFGlobal.vbf_leadmjj>600 && hltPFGlobal.vbf_leadmjj_deta>3.5 && hltPFMETNoMu.pt>75)"),
     ])
 
 triggers2015a = OrderedDict([
@@ -260,6 +264,7 @@ triggers2015a = OrderedDict([
     #("PFMET100CJ80CSV07", "(hltCaloMET.pt>70 && hltCaloMETClean.pt>60 && Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>70)>0 && hltCaloGlobal.bjet_maxcsv>0.7 && Sum$(abs(hltPFJetsL1FastL2L3NoPU.eta)<2.6 && hltPFJetsL1FastL2L3NoPU.pt>80)>0 && hltPFMET.pt>100)"),
     #("PFMET80CJ30x2ctrl", "(hltCaloMET.pt>65 && hltCaloMETClean.pt>55 && Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>20)>1 && Sum$(abs(hltPFJetsL1FastL2L3NoPU.eta)<2.6 && hltPFJetsL1FastL2L3NoPU.pt>30)>1 && hltPFMET.pt>80)"),
     #("PFMET100CJ80ctrl", "(hltCaloMET.pt>70 && hltCaloMETClean.pt>60 && Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>70)>0 && Sum$(abs(hltPFJetsL1FastL2L3NoPU.eta)<2.6 && hltPFJetsL1FastL2L3NoPU.pt>80)>0 && hltPFMET.pt>100)"),
+    #("PFMET65VBFMJJ800", "(hltCaloMET.pt>65 && Sum$(abs(hltCaloJetsL1Fast.eta)<5.0 && hltCaloJetsL1Fast.pt>30)>1 && Sum$(abs(hltPFJetsL1FastL2L3.eta)<5.0 && hltPFJetsL1FastL2L3.pt>40)>1 && hltPFGlobal.vbf_maxmjj>800 && hltPFGlobal.vbf_maxmjj_deta>3.5 && hltPFMETNoMu.pt>65)"),
     ])
 
 benchmarks = OrderedDict([
@@ -274,6 +279,7 @@ benchmarks = OrderedDict([
     #("PFMET100CJ80CSV07", sel_noNoise + "*(recoPFMETT0T1.pt>100)*" + "(Sum$(patJets.pt>30 && abs(patJets.eta)<2.5)>0 && patJets[0].pt>100 && abs(patJets[0].eta)<2.5 && patJets[0].jetID==1 && patGlobal.bjet_maxcsv>0.898)"),
     #("PFMET80CJ30x2ctrl", sel_noNoise + "*(recoPFMETT0T1.pt>80)*" + "(Sum$(patJets.pt>30 && abs(patJets.eta)<2.5)>1 && patJets[0].pt>50 && abs(patJets[0].eta)<2.5 && patJets[1].pt>50 && abs(patJets[1].eta)<2.5 && patJets[0].jetID==1 && patJets[1].jetID==1)"),
     #("PFMET100CJ80ctrl", sel_noNoise + "*(recoPFMETT0T1.pt>100)*" + "(Sum$(patJets.pt>30 && abs(patJets.eta)<2.5)>0 && patJets[0].pt>100 && abs(patJets[0].eta)<2.5 && patJets[0].jetID==1)"),
+    #("PFMET65VBFMJJ800", sel_noNoise + "*(recoPFMETT0T1.pt>65)*" + "(Sum$(patJets.pt>30 && abs(patJets.eta)<4.7)>1 && patJets[0].pt>50 && abs(patJets[0].eta)<4.7 && patJets[1].pt>50 && abs(patJets[1].eta)<4.7 && (patJets[0].eta*patJets[1].eta)<=0 && patJets[0].jetID==1 && patJets[1].jetID==1 && patGlobal.vbf_maxmjj>900 && patGlobal.vbf_maxmjj_deta>3.5)"),
     ])
 
 
@@ -513,10 +519,10 @@ if sections["future_numbers2"]:
     # Draw
     (c1, pad1, pad2) = prepare_canvas_withratio()
     #label1 = "PFMET150 #splitline{(All runs}{from L1 passthrough)}"
-    label1 = "PFMET150 (All runs x%.1f)" % (scale)
+    label1 = "PFMET150 (passthru x%.1f)" % (scale)
     label2 = "PFMET150 (Run 207454)"
-    label2by1 = "(Run 207454)/(All runs)"
-    (leg1, leg2) = draw_withratio(c1, pad1, pad2, histos, [label1, label2], [h2by1], [label2by1], ymax=8500, rymax=4.7)
+    label2by1 = "(Run 207454)/(passthru)"
+    (leg1, leg2) = draw_withratio(c1, pad1, pad2, histos, [label1, label2], [h2by1], [label2by1], ymax=7000, rymax=4.7)
     save_withratio(c1, pad1, pad2, imgdir, "future_R207454_normalizeby_nGoodPV")
     for i in xrange(42):  print "%.4f," % h2by1.GetBinContent(i),
     print
@@ -553,10 +559,10 @@ if sections["future_numbers2"]:
     # Draw
     (c1, pad1, pad2) = prepare_canvas_withratio()
     #label1 = "PFMET150 #splitline{(All runs}{from L1 passthrough)}"
-    label1 = "PFMET150 (All runs x%.1f)" % (scale)
+    label1 = "PFMET150 (passthru x%.1f)" % (scale)
     label2 = "PFMET150 (Run 207454)"
-    label2by1 = "(Run 207454)/(All runs)"
-    (leg1, leg2) = draw_withratio(c1, pad1, pad2, histos, [label1, label2], [h2by1], [label2by1], ymax=95000, rymax=3.2)
+    label2by1 = "(Run 207454)/(passthru)"
+    (leg1, leg2) = draw_withratio(c1, pad1, pad2, histos, [label1, label2], [h2by1], [label2by1], ymax=60000, rymax=3.2)
     save_withratio(c1, pad1, pad2, imgdir, "future_R207454_normalizeby_noiseType")
     for i in xrange(7):  print "%.4f," % h2by1.GetBinContent(i),
     print
