@@ -44,6 +44,7 @@
 // Trigger results
 #include "DataFormats/Common/interface/TriggerResults.h"
 #include "DataFormats/HLTReco/interface/TriggerEvent.h"
+#include "FWCore/Common/interface/TriggerNames.h"
 //#include "DataFormats/HLTReco/interface/HLTPrescaleTable.h"
 // GEN
 #include "DataFormats/HepMCCandidate/interface/GenParticle.h"

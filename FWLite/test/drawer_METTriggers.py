@@ -123,7 +123,7 @@ sections["puremet_eff"]       = False
 sections["puremet_clean"]     = False
 sections["puremet_clean_eff"] = False
 sections["monojet"]           = False
-sections["monojet_eff"]       = False
+sections["monojet_eff"]       = True
 sections["higdijet"]          = False
 sections["higdijet_eff"]      = False
 sections["susdijet"]          = False
@@ -138,7 +138,7 @@ sections["vbf_eff"]           = False
 sections["future_triggers"]   = False
 
 sections["topology"]          = False
-sections["future_topology"]   = True
+sections["future_topology"]   = False
 
 #imgdir = "figures_20131130/"  # for Torino workshop
 imgdir = "figures_20140206/"  # for first draft
@@ -1222,7 +1222,7 @@ if sections["monojet"]:
     plotting.append((variable, binning, addsel))
 
     variable = ("hltPFJetsL1FastL2L3_pt2", "MaxIf$(hltPFJetsL1FastL2L3.pt, hltPFJetsL1FastL2L3.pt!=Max$(hltPFJetsL1FastL2L3.pt))")
-    binning = ("#scale[0.7]{HLT} Subleading PFJet p_{T} [GeV]", 30, 0, 300)
+    binning = ("#scale[0.7]{HLT} Subleading PFJet p_{T} [GeV]", 30, 0, 150)
     addsel = addsel
     plotting.append((variable, binning, addsel))
 
@@ -1325,7 +1325,19 @@ if sections["monojet"]:
     addsel = "(Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>65)>0 && hltCaloMET.pt>65 && hltPFJetsL1FastL2L3[0].nhf<0.95 && Sum$(abs(hltPFJetsL1FastL2L3.eta)<2.6 && hltPFJetsL1FastL2L3.pt>80)>0 && hltPFMETNoMu.pt>105 && hltCaloMETClean.pt>60 && Sum$(hltPFJetsL1FastL2L3.pt>30)>1)"
     plotting.append((variable, binning, addsel))
 
-    for p in plotting:
+    variable = ("hltCaloJetsL1Fast_dphijj", "abs(deltaPhi(hltCaloJetsL1Fast[0].phi, hltCaloJetsL1Fast[1].phi))")
+    binning = ("#scale[0.7]{HLT} Leading-two CaloJets #Delta#phi", 32, 0, 3.2)
+    addsel = "(Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>65)>0 && hltCaloMET.pt>65 && hltPFJetsL1FastL2L3[0].nhf<0.95 && Sum$(abs(hltPFJetsL1FastL2L3.eta)<2.6 && hltPFJetsL1FastL2L3.pt>80)>0 && hltPFMETNoMu.pt>105 && hltCaloMETClean.pt>60 && Sum$(hltCaloJetsL1Fast.pt>20)>1)"
+    plotting.append((variable, binning, addsel))
+
+    # dRjj
+    variable = ("hltCaloJetsL1Fast_dRjj", "abs(deltaR(hltCaloJetsL1Fast[0].eta, hltCaloJetsL1Fast[0].phi, hltCaloJetsL1Fast[1].eta, hltCaloJetsL1Fast[1].phi))")
+    binning = ("#scale[0.7]{HLT} Leading-two CaloJets #DeltaR", 32, 0, 3.2)
+    addsel = "(Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>65)>0 && hltCaloMET.pt>65 && hltPFJetsL1FastL2L3[0].nhf<0.95 && Sum$(abs(hltPFJetsL1FastL2L3.eta)<2.6 && hltPFJetsL1FastL2L3.pt>80)>0 && hltPFMETNoMu.pt>105 && hltCaloMETClean.pt>60 && Sum$(hltCaloJetsL1Fast.pt>20)>1)"
+    plotting.append((variable, binning, addsel))
+
+
+    for p in plotting[-5:]:
         (variable, binning, addsel) = p
         params = [
             (variable[0]+"_all"          , kBlack , kWhite , variable[1], "*".join([sel, addsel])),

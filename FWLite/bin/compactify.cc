@@ -545,6 +545,8 @@ int main(int argc, char *argv[]) {
     }
     fwlite::ChainEvent ev(infilenames);
     fwlite::Handle<LumiSummary> lumisummary;
+    fwlite::Handle<edm::TriggerResults> triggerresultsHLT;
+    //fwlite::Handle<edm::TriggerResults> triggerresultsPAT;
     int ievent = 0;
     int jevent = 0;
     unsigned long long runlumi = 0, runlumi_old = 0;
@@ -576,7 +578,8 @@ int main(int argc, char *argv[]) {
 
         //______________________________________________________________________
         // Inst lumi
-        lumisummary.getByLabel(ev.getLuminosityBlock(), "lumiProducer");
+        lumisummary.getByLabel(ev, "lumiProducer");
+        //lumisummary.getByLabel(ev.getLuminosityBlock(), "lumiProducer");
         //if (lumisummary.isValid()) {  // FIXME: forgot to store!
         //    float instlumi = lumisummary->avgInsDelLumi();     // average inst lumi delivered
         //    float instreclumi = lumisummary->avgInsRecLumi();  // average inst lumi delivered, corrected by deadtime
@@ -586,12 +589,17 @@ int main(int argc, char *argv[]) {
         //______________________________________________________________________
         // Trigger results
         if (verbose)  std::cout << "compactify: Begin filling trigger results..." << std::endl;
-        edm::TriggerResultsByName resultsByName = ev.triggerResultsByName("HLT");  //< from original HLT
-        //edm::TriggerResultsByName resultsByName = ev.triggerResultsByName("HLT3");  //< from production mode (always true)
-        //edm::TriggerResultsByName resultsByName = ev.triggerResultsByName("HLT3PB");  //< from filtering mode
+        triggerresultsHLT.getByLabel(ev, "TriggerResults", "", "HLT");
+        const edm::TriggerNames triggernamesHLT = ev.triggerNames(*triggerresultsHLT);
+        const edm::TriggerResultsByName triggerByName(&(*triggerresultsHLT), &triggernamesHLT);
+        //edm::TriggerResultsByName triggerByName = ev.triggerResultsByName("HLT");  //< from original HLT
+        //edm::TriggerResultsByName triggerByName = ev.triggerResultsByName("HLT3");  //< from production mode (always true)
+        //edm::TriggerResultsByName triggerByName = ev.triggerResultsByName("HLT3PB");  //< from filtering mode
         bool triggerFlagsOR = false;
         for (unsigned int i = 0; i < triggers.size(); ++i) {
-            bool accept = resultsByName.accept(triggers.at(i));
+            unsigned int ii = triggernamesHLT.triggerIndex(triggers.at(i));
+            if (ii == triggernamesHLT.size())  continue;  // skip instead of throw errors
+            bool accept = triggerByName.accept(triggers.at(i));
             triggerFlags[i] = accept;
             if (accept)  triggerFlagsOR = true;
         }
@@ -600,10 +608,10 @@ int main(int argc, char *argv[]) {
         //______________________________________________________________________
         // MET filter results
         if (verbose)  std::cout << "compactify: Begin filling MET filter results..." << std::endl;
-        edm::TriggerResultsByName resultsByNamePAT = ev.triggerResultsByName("PAT");
+        edm::TriggerResultsByName triggerByNamePAT = ev.triggerResultsByName("PAT");
         bool metfilterFlagsAND = true;
         for (unsigned int i = 0; i < metfilters.size(); ++i) {
-            bool accept = resultsByNamePAT.accept(metfilters.at(i));
+            bool accept = triggerByNamePAT.accept(metfilters.at(i));
             metfilterFlags[i] = accept;
             if (!accept)  metfilterFlagsAND = false;
         }
@@ -611,7 +619,7 @@ int main(int argc, char *argv[]) {
 
         bool optmetfilterFlagsAND = true;
         for (unsigned int i = 0; i < optmetfilters.size(); ++i) {
-            bool accept = resultsByNamePAT.accept(optmetfilters.at(i));
+            bool accept = triggerByNamePAT.accept(optmetfilters.at(i));
             optmetfilterFlags[i] = accept;
             if (!accept)  optmetfilterFlagsAND = false;
         }
