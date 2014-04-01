@@ -115,7 +115,9 @@ sections["monojet_clean"]   = False
 
 sections["future_triggers"] = False
 sections["future_numbers"]  = False
-sections["future_numbers2"] = True
+sections["future_numbers2"] = False
+
+sections["pickevents"]      = True
 
 #imgdir = "figures_20131130/"  # for Torino workshop
 imgdir = "figures_20140206/"  # for first draft
@@ -254,12 +256,12 @@ triggers2012D_half = OrderedDict([
 
 triggers2015a = OrderedDict([
     ("PFMET150", "(hltCaloMET.pt>90 && hltCaloMETClean.pt>80 && hltCaloMETCleanUsingJetID.pt>80 && hltPFMET.pt>150)"),
-    ("PFMET100CJ100", "(Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>85)>0 && hltCaloMET.pt>70 && hltCaloMETClean.pt>60 && Sum$(abs(hltPFJetsL1FastL2L3NoPU.eta)<2.6 && hltPFJetsL1FastL2L3NoPU.pt>100)>0 && (hltPFMETNoMu.pt>100||hltPFMET.pt>100) && hltPFJetsL1FastL2L3[0].nhf<0.95 && hltPFJetsL1FastL2L3[0].nch>0)"),
+    ("PFMET100CJ100", "(Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>85)>0 && hltCaloMET.pt>70 && hltCaloMETClean.pt>60 && Sum$(abs(hltPFJetsL1FastL2L3NoPU.eta)<2.6 && hltPFJetsL1FastL2L3NoPU.pt>100)>0 && (hltPFMET.pt>100||hltPFMETNoMu.pt>100) && hltPFJetsL1FastL2L3[0].nhf<0.95 && hltPFJetsL1FastL2L3[0].nch>0)"),
     #("PFMET120CJ80", "(Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>70)>0 && hltCaloMET.pt>80 && hltCaloMETClean.pt>70 && Sum$(abs(hltPFJetsL1FastL2L3NoPU.eta)<2.6 && hltPFJetsL1FastL2L3NoPU.pt>80)>0 && (hltPFMETNoMu.pt>120||hltPFMET.pt>120) && hltPFJetsL1FastL2L3[0].nhf<0.95 && hltPFJetsL1FastL2L3[0].nch>0)"),
     ("PFMET100CJ60CJ30", "(hltCaloMET.pt>70 && hltCaloMETClean.pt>60 && Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>20)>1 && Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>50)>0 && Sum$(abs(hltPFJetsL1FastL2L3NoPU.eta)<2.6 && hltPFJetsL1FastL2L3NoPU.pt>30)>1 && Sum$(abs(hltPFJetsL1FastL2L3NoPU.eta)<2.6 && hltPFJetsL1FastL2L3NoPU.pt>60)>0 && (hltPFMET.pt>100||hltPFMETNoMu.pt>100) && hltPFGlobal.dijet_mindphi_2cj>0.5)"),
     ("PFMET80CJ60x2", "(hltCaloMET.pt>65 && hltCaloMETClean.pt>55 && Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>50)>1 && Sum$(abs(hltPFJetsL1FastL2L3NoPU.eta)<2.6 && hltPFJetsL1FastL2L3NoPU.pt>60)>1 && (hltPFMET.pt>80||hltPFMETNoMu.pt>80) && hltPFGlobal.dijet_mindphi_2cj>0.3)"),
-    #("PFMET100HT400", "(hltCaloHTMHT.sumEt>350 && hltCaloMET.pt>65 && hltCaloMETClean.pt>55 && hltPFHTMHTNoPU.sumEt>400 && hltPFMET.pt>100 && Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>30)>1 && Sum$(abs(hltPFJetsL1FastL2L3NoPU.eta)<2.6 && hltPFJetsL1FastL2L3NoPU.pt>40)>1)"),
-    ("PFMET80HT400", "(hltCaloHTMHT.sumEt>350 && hltCaloMET.pt>65 && hltCaloMETClean.pt>55 && hltPFHTMHTNoPU.sumEt>400 && hltPFMET.pt>80 && Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>30)>1 && Sum$(abs(hltPFJetsL1FastL2L3NoPU.eta)<2.6 && hltPFJetsL1FastL2L3NoPU.pt>40)>1)"),
+    #("PFMET100HT400", "(hltCaloHTMHT.sumEt>350 && hltCaloMET.pt>65 && hltCaloMETClean.pt>55 && hltPFHTMHTNoPU.sumEt>400 && (hltPFMET.pt>100||hltPFMET.pt>100) && Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>20)>1 && Sum$(abs(hltPFJetsL1FastL2L3NoPU.eta)<2.6 && hltPFJetsL1FastL2L3NoPU.pt>40)>1)"),
+    ("PFMET80HT400", "(hltCaloHTMHT.sumEt>350 && hltCaloMET.pt>65 && hltCaloMETClean.pt>55 && hltPFHTMHTNoPU.sumEt>400 && (hltPFMET.pt>80||hltPFMET.pt>80) && Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>20)>1 && Sum$(abs(hltPFJetsL1FastL2L3NoPU.eta)<2.6 && hltPFJetsL1FastL2L3NoPU.pt>40)>1)"),
     ("PFMET80CJ30x2CSV07", "(hltCaloMET.pt>65 && hltCaloMETClean.pt>55 && Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>20)>1 && hltCaloGlobal.bjet_maxcsv>0.7 && Sum$(abs(hltPFJetsL1FastL2L3NoPU.eta)<2.6 && hltPFJetsL1FastL2L3NoPU.pt>30)>1 && hltPFMET.pt>80)"),
     #("PFMET100CJ80CSV07", "(hltCaloMET.pt>70 && hltCaloMETClean.pt>60 && Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>70)>0 && hltCaloGlobal.bjet_maxcsv>0.7 && Sum$(abs(hltPFJetsL1FastL2L3NoPU.eta)<2.6 && hltPFJetsL1FastL2L3NoPU.pt>80)>0 && hltPFMET.pt>100)"),
     #("PFMET80CJ30x2ctrl", "(hltCaloMET.pt>65 && hltCaloMETClean.pt>55 && Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>20)>1 && Sum$(abs(hltPFJetsL1FastL2L3NoPU.eta)<2.6 && hltPFJetsL1FastL2L3NoPU.pt>30)>1 && hltPFMET.pt>80)"),
@@ -302,14 +304,14 @@ if sections["future_triggers"]:
     #sel_trig1 = triggers2015a["PFMET80CJ60x2"]
 
     ## Multijet
-    #sel_trig0 = triggers2012D["HT"]
+    sel_trig0 = triggers2012D["HT"]
     #sel_trig1 = triggers2015a["PFMET100HT400"]
-    ##sel_trig1 = triggers2015a["PFMET80HT400"]
+    sel_trig1 = triggers2015a["PFMET80HT400"]
 
     ## btag
-    sel_trig0 = triggers2012D["btag"]
-    sel_trig1 = triggers2015a["PFMET80CJ30x2CSV07"]
-    #sel_trig1 = triggers2015a["PFMET100CJ80CSV07"]
+    #sel_trig0 = triggers2012D["btag"]
+    #sel_trig1 = triggers2015a["PFMET80CJ30x2CSV07"]
+    ##sel_trig1 = triggers2015a["PFMET100CJ80CSV07"]
 
     # Count!
     sel_trigs = [
@@ -354,6 +356,16 @@ if sections["future_numbers"]:
     counts = count_future(triggers2012D_half, sel, normalizeby, benchmarks=benchmarks, exclusive=True); pprint_future(counts, refcount, refrate)
     counts = count_future(triggers2015a, sel, normalizeby, benchmarks=benchmarks, exclusive=True); pprint_future(counts, refcount, refrate)
 
+
+if sections["pickevents"]:
+    # Pick an event if
+    # - in Run 207454 LS 79-600, and
+    # - pass L1 ETM40, and
+    # - pass any 2012D trigger, and
+    # - pass any 2015a trigger, and
+    # - pass offline PFMET>80
+    # - pass offline 1 jet pT>30, |eta|<5
+    pass
 
 
 

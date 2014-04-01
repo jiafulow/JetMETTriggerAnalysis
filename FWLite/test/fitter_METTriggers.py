@@ -103,8 +103,8 @@ for f in infiles:
 
 sections = {}
 sections["makedataset"] = False
-sections["makefits"]    = False
-sections["makenewfits"] = True
+sections["makefits"]    = True
+sections["makenewfits"] = False
 sections["makefits2"]   = False
 plotting = []
 writing = []
@@ -501,7 +501,7 @@ if sections["makefits"]:
     for p in plotting:
         (cat, kTrig, fitparams, xlow, xup) = p
         nfitparams = len(fitparams)
-        if cat != "cat5":  continue
+        if cat != "cat4":  continue
 
         var = "var0"
         xtitle = "#scale[0.7]{RECO} T0T1 PFMET [GeV]"
@@ -612,7 +612,7 @@ if sections["makenewfits"]:
         ]
     plotting.append((cat, newcat, kTrig, fitparams, xlow, xup))
 
-    xlow, xup = 40, 400
+    xlow, xup = 60, 400
     cat = "cat4"
     newcat = "cat10"
     #kTrig = "HT"
@@ -665,7 +665,7 @@ if sections["makenewfits"]:
     for p in plotting:
         (cat, newcat, kTrig, fitparams, xlow, xup) = p
         nfitparams = len(fitparams)
-        if cat != "cat5":  continue
+        if cat != "cat4":  continue
 
         var = "var0"
         xtitle = "#scale[0.7]{RECO} T0T1 PFMET [GeV]"

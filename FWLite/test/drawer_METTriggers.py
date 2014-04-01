@@ -123,7 +123,7 @@ sections["puremet_eff"]       = False
 sections["puremet_clean"]     = False
 sections["puremet_clean_eff"] = False
 sections["monojet"]           = False
-sections["monojet_eff"]       = True
+sections["monojet_eff"]       = False
 sections["higdijet"]          = False
 sections["higdijet_eff"]      = False
 sections["susdijet"]          = False
@@ -135,7 +135,7 @@ sections["bjet"]              = False
 sections["bjet_eff"]          = False
 sections["vbf"]               = False
 sections["vbf_eff"]           = False
-sections["future_triggers"]   = False
+sections["future_triggers"]   = True
 
 sections["topology"]          = False
 sections["future_topology"]   = False
@@ -1424,6 +1424,11 @@ if sections["higdijet"]:
     addsel = addsel
     plotting.append((variable, binning, addsel))
 
+    variable = ("hltPFJetsL1FastL2L3_eta2", "Sum$(hltPFJetsL1FastL2L3.eta * (hltPFJetsL1FastL2L3.pt==MaxIf$(hltPFJetsL1FastL2L3.pt, hltPFJetsL1FastL2L3.pt!=Max$(hltPFJetsL1FastL2L3.pt))))")
+    binning = ("#scale[0.7]{HLT} Subleading PFJet #eta", 20, -5, 5)
+    addsel = addsel
+    plotting.append((variable, binning, addsel))
+
     variable = ("hltPFJetsL1FastL2L3_njets", "Sum$(hltPFJetsL1FastL2L3.pt>30 && abs(hltPFJetsL1FastL2L3.eta)<2.5)")
     binning = ("#scale[0.7]{HLT} # PFJets_{p_{T} > 30 GeV, |#eta| < 2.5}", 8, 0, 8)
     addsel = addsel
@@ -1583,6 +1588,7 @@ if sections["higdijet"]:
 
     for p in plotting:
         (variable, binning, addsel) = p
+        #if variable[0] != "hltPFJetsL1FastL2L3_eta2":  continue
         params = [
             (variable[0]+"_all"          , kBlack , kWhite , variable[1], "*".join([sel, addsel])),
             (variable[0]+"_trig1"        , kColor , kColor , variable[1], "*".join([sel, addsel, sel_trig1])),
@@ -1663,8 +1669,13 @@ if sections["susdijet"]:
     addsel = addsel
     plotting.append((variable, binning, addsel))
 
-    variable = ("hltPFJetsL1FastL2L3_eta1", "Sum$(hltPFJetsL1FastL2L3.eta * (hltPFJetsL1FastL2L3.pt==Max$(hltPFJetsL1FastL2L3.pt)))")
-    binning = ("#scale[0.7]{HLT} Leading PFJet #eta", 20, -5, 5)
+    variable = ("hltPFJetsL1FastL2L3NoPU_eta1", "Sum$(hltPFJetsL1FastL2L3NoPU.eta * (hltPFJetsL1FastL2L3NoPU.pt==Max$(hltPFJetsL1FastL2L3NoPU.pt)))")
+    binning = ("#scale[0.7]{HLT} Leading PFNoPUJet #eta", 20, -5, 5)
+    addsel = addsel
+    plotting.append((variable, binning, addsel))
+
+    variable = ("hltPFJetsL1FastL2L3NoPU_eta2", "Sum$(hltPFJetsL1FastL2L3NoPU.eta * (hltPFJetsL1FastL2L3NoPU.pt==MaxIf$(hltPFJetsL1FastL2L3NoPU.pt, hltPFJetsL1FastL2L3NoPU.pt!=Max$(hltPFJetsL1FastL2L3NoPU.pt))))")
+    binning = ("#scale[0.7]{HLT} Subleading PFNoPUJet #eta", 20, -5, 5)
     addsel = addsel
     plotting.append((variable, binning, addsel))
 
@@ -1747,6 +1758,16 @@ if sections["susdijet"]:
     addsel = sel_trig1
     plotting.append((variable, binning, addsel))
 
+    variable = ("hltCaloJetsL1Fast_mindphi_2cj", "hltCaloGlobal.dijet_mindphi_2cj")
+    binning = ("#scale[0.7]{HLT} Calo min #Delta#phi_{2cj}(MET,jet)", 32, 0, 3.2)
+    addsel = sel_trig1
+    plotting.append((variable, binning, addsel))
+
+    variable = ("hltCaloJetsL1Fast_mindphi_3cj", "hltCaloGlobal.dijet_mindphi_3cj")
+    binning = ("#scale[0.7]{HLT} Calo min #Delta#phi_{3cj}(MET,jet)", 32, 0, 3.2)
+    addsel = sel_trig1
+    plotting.append((variable, binning, addsel))
+
     variable = ("hltCaloJetsL1Fast_mindphi_j40", "hltCaloGlobal.dijet_mindphi_j40")
     binning = ("#scale[0.7]{HLT} Calo min #Delta#phi_{j40}(MET,jet)", 32, 0, 3.2)
     addsel = sel_trig1
@@ -1761,6 +1782,7 @@ if sections["susdijet"]:
 
     for p in plotting:
         (variable, binning, addsel) = p
+        if variable[0] != "hltCaloJetsL1Fast_mindphi_2cj" and variable[0] != "hltCaloJetsL1Fast_mindphi_3cj":  continue
         params = [
             (variable[0]+"_all"          , kBlack , kWhite , variable[1], "*".join([sel, addsel])),
             (variable[0]+"_trig1"        , kColor , kColor , variable[1], "*".join([sel, addsel, sel_trig1])),
@@ -3679,8 +3701,8 @@ if sections["future_triggers"]:
     selections = [
         "(hltCaloHTMHT.sumEt>300 && hltCaloHTMHT.pt>75 && hltPFHTMHTNoPU.sumEt>350 && (hltCaloHTMHT.pt>150 || hltPFMET.pt>100))",
         "(hltCaloHTMHT.sumEt>350 && hltCaloHTMHT.pt>75 && hltPFHTMHTNoPU.sumEt>400 && (hltCaloHTMHT.pt>150 || hltPFMET.pt>100))",
-        "(hltCaloHTMHT.sumEt>350 && hltCaloHTMHT.pt>75 && hltPFHTMHTNoPU.sumEt>400 && (hltCaloHTMHT.pt>150 || hltPFMET.pt>100) && Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>30)>1 && Sum$(abs(hltPFJetsL1FastL2L3NoPU.eta)<2.6 && hltPFJetsL1FastL2L3NoPU.pt>40)>1)",
-        "(hltCaloHTMHT.sumEt>350 && hltCaloMET.pt>65 && hltCaloMETClean.pt>55 && hltPFHTMHTNoPU.sumEt>400 && hltPFMET.pt>100 && Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>30)>1 && Sum$(abs(hltPFJetsL1FastL2L3NoPU.eta)<2.6 && hltPFJetsL1FastL2L3NoPU.pt>40)>1)",
+        "(hltCaloHTMHT.sumEt>350 && hltCaloHTMHT.pt>75 && hltPFHTMHTNoPU.sumEt>400 && (hltCaloHTMHT.pt>150 || hltPFMET.pt>100) && Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>20)>1 && Sum$(abs(hltPFJetsL1FastL2L3NoPU.eta)<2.6 && hltPFJetsL1FastL2L3NoPU.pt>40)>1)",
+        "(hltCaloHTMHT.sumEt>350 && hltCaloMET.pt>65 && hltCaloMETClean.pt>55 && hltPFHTMHTNoPU.sumEt>400 && (hltPFMET.pt>100||hltPFMET.pt>100) && Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>20)>1 && Sum$(abs(hltPFJetsL1FastL2L3NoPU.eta)<2.6 && hltPFJetsL1FastL2L3NoPU.pt>40)>1)",
         ]
     entries = [
         "2012D",
@@ -3688,12 +3710,12 @@ if sections["future_triggers"]:
         "2015#alpha (HT>400 && CJ40x2)",
         "2015#alpha (HT>400 && CJ40x2 && CaloMET>65)",
         ]
-    #legsA = draw_future_A(variable, binning, selections, entries, sel_bench, benchmark=True)
-    #save(imgdir, "future_A_" + kTrig + "_" + variable[0])
-    #legsB = draw_future_B(selections=itemgetter(0,3)(selections), entries=itemgetter(0,3)(entries), numerator=True)
-    #save(imgdir, "future_B2_" + kTrig + "_" + variable[0])
-    #legsB = draw_future_B(selections=itemgetter(0,3)(selections), entries=itemgetter(0,3)(entries), numerator=False)
-    #save(imgdir, "future_B_" + kTrig + "_" + variable[0])
+    legsA = draw_future_A(variable, binning, selections, entries, sel_bench, benchmark=True)
+    save(imgdir, "future_A_" + kTrig + "_" + variable[0])
+    legsB = draw_future_B(selections=itemgetter(0,3)(selections), entries=itemgetter(0,3)(entries), numerator=True)
+    save(imgdir, "future_B2_" + kTrig + "_" + variable[0])
+    legsB = draw_future_B(selections=itemgetter(0,3)(selections), entries=itemgetter(0,3)(entries), numerator=False)
+    save(imgdir, "future_B_" + kTrig + "_" + variable[0])
 
     ## Change variable
     #variable = ("patMHT", "patHTMHT.pt")
@@ -3710,8 +3732,8 @@ if sections["future_triggers"]:
     selections = [
         "(hltCaloHTMHT.sumEt>300 && hltCaloHTMHT.pt>75 && hltPFHTMHTNoPU.sumEt>350 && (hltCaloHTMHT.pt>150 || hltPFMET.pt>100))",
         "(hltCaloHTMHT.sumEt>350 && hltCaloHTMHT.pt>75 && hltPFHTMHTNoPU.sumEt>400 && (hltCaloHTMHT.pt>150 || hltPFMET.pt>100))",
-        "(hltCaloHTMHT.sumEt>350 && hltCaloHTMHT.pt>75 && hltPFHTMHTNoPU.sumEt>400 && (hltCaloHTMHT.pt>150 || hltPFMET.pt>100) && Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>30)>1 && Sum$(abs(hltPFJetsL1FastL2L3NoPU.eta)<2.6 && hltPFJetsL1FastL2L3NoPU.pt>40)>1)",
-        "(hltCaloHTMHT.sumEt>350 && hltCaloMET.pt>65 && hltCaloMETClean.pt>55 && hltPFHTMHTNoPU.sumEt>400 && hltPFMET.pt>80 && Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>30)>1 && Sum$(abs(hltPFJetsL1FastL2L3NoPU.eta)<2.6 && hltPFJetsL1FastL2L3NoPU.pt>40)>1)",
+        "(hltCaloHTMHT.sumEt>350 && hltCaloHTMHT.pt>75 && hltPFHTMHTNoPU.sumEt>400 && (hltCaloHTMHT.pt>150 || hltPFMET.pt>100) && Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>20)>1 && Sum$(abs(hltPFJetsL1FastL2L3NoPU.eta)<2.6 && hltPFJetsL1FastL2L3NoPU.pt>40)>1)",
+        "(hltCaloHTMHT.sumEt>350 && hltCaloMET.pt>65 && hltCaloMETClean.pt>55 && hltPFHTMHTNoPU.sumEt>400 && (hltPFMET.pt>80||hltPFMET.pt>80) && Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>20)>1 && Sum$(abs(hltPFJetsL1FastL2L3NoPU.eta)<2.6 && hltPFJetsL1FastL2L3NoPU.pt>40)>1)",
         ]
     entries = [
         "2012D",
@@ -3719,12 +3741,12 @@ if sections["future_triggers"]:
         "2015#alpha (HT>400 && CJ40x2)",
         "2015#alpha (HT>400 && CJ40x2 && PFMET>80)",
         ]
-    #legsA = draw_future_A(variable, binning, selections, entries, sel_bench, benchmark=True)
-    #save(imgdir, "future_A_" + kTrig + "_" + variable[0])
-    #legsB = draw_future_B(selections=itemgetter(0,3)(selections), entries=itemgetter(0,3)(entries), numerator=True)
-    #save(imgdir, "future_B2_" + kTrig + "_" + variable[0])
-    #legsB = draw_future_B(selections=itemgetter(0,3)(selections), entries=itemgetter(0,3)(entries), numerator=False)
-    #save(imgdir, "future_B_" + kTrig + "_" + variable[0])
+    legsA = draw_future_A(variable, binning, selections, entries, sel_bench, benchmark=True)
+    save(imgdir, "future_A_" + kTrig + "_" + variable[0])
+    legsB = draw_future_B(selections=itemgetter(0,3)(selections), entries=itemgetter(0,3)(entries), numerator=True)
+    save(imgdir, "future_B2_" + kTrig + "_" + variable[0])
+    legsB = draw_future_B(selections=itemgetter(0,3)(selections), entries=itemgetter(0,3)(entries), numerator=False)
+    save(imgdir, "future_B_" + kTrig + "_" + variable[0])
 
     #___________________________________________________________________________
     # btag
@@ -3770,12 +3792,12 @@ if sections["future_triggers"]:
         "2015#alpha (CJ80)",
         "2015#alpha (CJ80 && PFMET100)",
         ]
-    legsA = draw_future_A(variable, binning, selections, entries, sel_bench, benchmark=True)
-    save(imgdir, "future_A_" + kTrig + "_" + variable[0])
-    legsB = draw_future_B(selections=itemgetter(0,2)(selections), entries=itemgetter(0,2)(entries), numerator=True)
-    save(imgdir, "future_B2_" + kTrig + "_" + variable[0])
-    legsB = draw_future_B(selections=itemgetter(0,2)(selections), entries=itemgetter(0,2)(entries), numerator=False)
-    save(imgdir, "future_B_" + kTrig + "_" + variable[0])
+    #legsA = draw_future_A(variable, binning, selections, entries, sel_bench, benchmark=True)
+    #save(imgdir, "future_A_" + kTrig + "_" + variable[0])
+    #legsB = draw_future_B(selections=itemgetter(0,2)(selections), entries=itemgetter(0,2)(entries), numerator=True)
+    #save(imgdir, "future_B2_" + kTrig + "_" + variable[0])
+    #legsB = draw_future_B(selections=itemgetter(0,2)(selections), entries=itemgetter(0,2)(entries), numerator=False)
+    #save(imgdir, "future_B_" + kTrig + "_" + variable[0])
 
 
 # ______________________________________________________________________________
@@ -4076,12 +4098,12 @@ if sections["future_topology"]:
 
     triggers2015a = OrderedDict([
         ("PFMET150", "(hltCaloMET.pt>90 && hltCaloMETClean.pt>80 && hltCaloMETCleanUsingJetID.pt>80 && hltPFMET.pt>150)"),
-        ("PFMET100CJ100", "(Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>85)>0 && hltCaloMET.pt>70 && hltCaloMETClean.pt>60 && Sum$(abs(hltPFJetsL1FastL2L3NoPU.eta)<2.6 && hltPFJetsL1FastL2L3NoPU.pt>100)>0 && (hltPFMETNoMu.pt>100||hltPFMET.pt>100) && hltPFJetsL1FastL2L3[0].nhf<0.95 && hltPFJetsL1FastL2L3[0].nch>0)"),
+        ("PFMET100CJ100", "(Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>85)>0 && hltCaloMET.pt>70 && hltCaloMETClean.pt>60 && Sum$(abs(hltPFJetsL1FastL2L3NoPU.eta)<2.6 && hltPFJetsL1FastL2L3NoPU.pt>100)>0 && (hltPFMET.pt>100||hltPFMETNoMu.pt>100) && hltPFJetsL1FastL2L3[0].nhf<0.95 && hltPFJetsL1FastL2L3[0].nch>0)"),
         #("PFMET120CJ80", "(Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>70)>0 && hltCaloMET.pt>80 && hltCaloMETClean.pt>70 && Sum$(abs(hltPFJetsL1FastL2L3NoPU.eta)<2.6 && hltPFJetsL1FastL2L3NoPU.pt>80)>0 && (hltPFMETNoMu.pt>120||hltPFMET.pt>120) && hltPFJetsL1FastL2L3[0].nhf<0.95 && hltPFJetsL1FastL2L3[0].nch>0)"),
         ("PFMET100CJ60CJ30", "(hltCaloMET.pt>70 && hltCaloMETClean.pt>60 && Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>20)>1 && Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>50)>0 && Sum$(abs(hltPFJetsL1FastL2L3NoPU.eta)<2.6 && hltPFJetsL1FastL2L3NoPU.pt>30)>1 && Sum$(abs(hltPFJetsL1FastL2L3NoPU.eta)<2.6 && hltPFJetsL1FastL2L3NoPU.pt>60)>0 && (hltPFMET.pt>100||hltPFMETNoMu.pt>100) && hltPFGlobal.dijet_mindphi_2cj>0.5)"),
         ("PFMET80CJ60x2", "(hltCaloMET.pt>65 && hltCaloMETClean.pt>55 && Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>50)>1 && Sum$(abs(hltPFJetsL1FastL2L3NoPU.eta)<2.6 && hltPFJetsL1FastL2L3NoPU.pt>60)>1 && (hltPFMET.pt>80||hltPFMETNoMu.pt>80) && hltPFGlobal.dijet_mindphi_2cj>0.3)"),
-        #("PFMET100HT400", "(hltCaloHTMHT.sumEt>350 && hltCaloMET.pt>65 && hltCaloMETClean.pt>55 && hltPFHTMHTNoPU.sumEt>400 && hltPFMET.pt>100 && Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>30)>1 && Sum$(abs(hltPFJetsL1FastL2L3NoPU.eta)<2.6 && hltPFJetsL1FastL2L3NoPU.pt>40)>1)"),
-        ("PFMET80HT400", "(hltCaloHTMHT.sumEt>350 && hltCaloMET.pt>65 && hltCaloMETClean.pt>55 && hltPFHTMHTNoPU.sumEt>400 && hltPFMET.pt>80 && Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>30)>1 && Sum$(abs(hltPFJetsL1FastL2L3NoPU.eta)<2.6 && hltPFJetsL1FastL2L3NoPU.pt>40)>1)"),
+        #("PFMET100HT400", "(hltCaloHTMHT.sumEt>350 && hltCaloMET.pt>65 && hltCaloMETClean.pt>55 && hltPFHTMHTNoPU.sumEt>400 && (hltPFMET.pt>100||hltPFMET.pt>100) && Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>20)>1 && Sum$(abs(hltPFJetsL1FastL2L3NoPU.eta)<2.6 && hltPFJetsL1FastL2L3NoPU.pt>40)>1)"),
+        ("PFMET80HT400", "(hltCaloHTMHT.sumEt>350 && hltCaloMET.pt>65 && hltCaloMETClean.pt>55 && hltPFHTMHTNoPU.sumEt>400 && (hltPFMET.pt>80||hltPFMET.pt>80) && Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>20)>1 && Sum$(abs(hltPFJetsL1FastL2L3NoPU.eta)<2.6 && hltPFJetsL1FastL2L3NoPU.pt>40)>1)"),
         ("PFMET80CJ30x2CSV07", "(hltCaloMET.pt>65 && hltCaloMETClean.pt>55 && Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>20)>1 && hltCaloGlobal.bjet_maxcsv>0.7 && Sum$(abs(hltPFJetsL1FastL2L3NoPU.eta)<2.6 && hltPFJetsL1FastL2L3NoPU.pt>30)>1 && hltPFMET.pt>80)"),
         #("PFMET100CJ80CSV07", "(hltCaloMET.pt>70 && hltCaloMETClean.pt>60 && Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>70)>0 && hltCaloGlobal.bjet_maxcsv>0.7 && Sum$(abs(hltPFJetsL1FastL2L3NoPU.eta)<2.6 && hltPFJetsL1FastL2L3NoPU.pt>80)>0 && hltPFMET.pt>100)"),
         #("PFMET80CJ30x2ctrl", "(hltCaloMET.pt>65 && hltCaloMETClean.pt>55 && Sum$(abs(hltCaloJetsL1Fast.eta)<2.6 && hltCaloJetsL1Fast.pt>20)>1 && Sum$(abs(hltPFJetsL1FastL2L3NoPU.eta)<2.6 && hltPFJetsL1FastL2L3NoPU.pt>30)>1 && hltPFMET.pt>80)"),
